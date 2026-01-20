@@ -60,9 +60,19 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#browse" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <button
+              type="button"
+              onClick={() => {
+                if (user) {
+                  navigate("/papers");
+                } else {
+                  openSignIn();
+                }
+              }}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
               Browse Papers
-            </a>
+            </button>
             <a href="#upload" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Upload
             </a>
@@ -135,9 +145,20 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden border-t border-border bg-background animate-fade-in">
             <nav className="container py-4 flex flex-col gap-4">
-              <a href="#browse" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (user) {
+                    navigate("/papers");
+                    setIsMenuOpen(false);
+                  } else {
+                    openSignIn();
+                  }
+                }}
+                className="text-left text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+              >
                 Browse Papers
-              </a>
+              </button>
               <a href="#upload" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2">
                 Upload
               </a>

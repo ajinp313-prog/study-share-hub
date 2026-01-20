@@ -1,9 +1,13 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Users, FileText, Award } from "lucide-react";
 import AuthModal from "./AuthModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Hero = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   return (
@@ -39,8 +43,18 @@ const Hero = () => {
                 Start Exploring
                 <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="lg" asChild>
-                <a href="#browse">Browse Papers</a>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => {
+                  if (user) {
+                    navigate("/papers");
+                  } else {
+                    setAuthModalOpen(true);
+                  }
+                }}
+              >
+                Browse Papers
               </Button>
             </div>
 

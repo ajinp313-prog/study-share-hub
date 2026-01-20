@@ -1,12 +1,24 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, BookOpen, Award } from "lucide-react";
+import { Menu, X, BookOpen, Award, User, LogOut } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import AuthModal from "./AuthModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin");
+  const { user, signOut, loading } = useAuth();
+  const navigate = useNavigate();
 
   const openSignIn = () => {
     setAuthModalTab("signin");
@@ -18,6 +30,21 @@ const Header = () => {
     setAuthModalTab("signup");
     setAuthModalOpen(true);
     setIsMenuOpen(false);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  const getUserInitials = () => {
+    if (user?.user_metadata?.name) {
+      return user.user_metadata.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return "U";
   };
 
   return (
@@ -46,12 +73,52 @@ const Header = () => {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={openSignIn}>
-              Sign In
-            </Button>
-            <Button variant="default" size="sm" onClick={openSignUp}>
-              Get Started
-            </Button>
+            {loading ? (
+              <div className="h-8 w-8 animate-pulse rounded-full bg-muted"></div>
+            ) : user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                    <Avatar className="h-9 w-9">
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      {user.user_metadata?.name && (
+                        <p className="font-medium">{user.user_metadata.name}</p>
+                      )}
+                      <p className="w-[200px] truncate text-sm text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                    <User className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" onClick={openSignIn}>
+                  Sign In
+                </Button>
+                <Button variant="default" size="sm" onClick={openSignUp}>
+                  Get Started
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -79,12 +146,25 @@ const Header = () => {
                 Rewards
               </a>
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                <Button variant="ghost" className="w-full justify-center" onClick={openSignIn}>
-                  Sign In
-                </Button>
-                <Button variant="default" className="w-full justify-center" onClick={openSignUp}>
-                  Get Started
-                </Button>
+                {user ? (
+                  <>
+                    <Button variant="ghost" className="w-full justify-center" onClick={() => { navigate("/dashboard"); setIsMenuOpen(false); }}>
+                      Dashboard
+                    </Button>
+                    <Button variant="destructive" className="w-full justify-center" onClick={handleSignOut}>
+                      Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="ghost" className="w-full justify-center" onClick={openSignIn}>
+                      Sign In
+                    </Button>
+                    <Button variant="default" className="w-full justify-center" onClick={openSignUp}>
+                      Get Started
+                    </Button>
+                  </>
+                )}
               </div>
             </nav>
           </div>

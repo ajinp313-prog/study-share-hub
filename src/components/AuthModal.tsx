@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,8 +14,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { UserPlus, LogIn, Mail, Lock, Sparkles, Phone } from "lucide-react";
+import { UserPlus, LogIn, Mail, Lock, Sparkles, Phone, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 const subjects = [
@@ -52,9 +54,11 @@ interface AuthModalProps {
 
 const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
   
   const [signInData, setSignInData] = useState({
     identifier: "",
@@ -78,7 +82,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
     );
   };
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
 
@@ -94,14 +98,52 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
       return;
     }
 
-    toast({
-      title: "Welcome back!",
-      description: "You have successfully signed in.",
-    });
-    onOpenChange(false);
+    setIsLoading(true);
+
+    try {
+      // Check if identifier is email or phone
+      const isEmail = signInData.identifier.includes("@");
+      
+      const { error } = await supabase.auth.signInWithPassword({
+        email: isEmail ? signInData.identifier : `${signInData.identifier}@phone.local`,
+        password: signInData.password,
+      });
+
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          toast({
+            title: "Login failed",
+            description: "Invalid email/mobile or password. Please try again.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Login failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully signed in.",
+      });
+      onOpenChange(false);
+      navigate("/dashboard");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
 
@@ -117,11 +159,68 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
       return;
     }
 
-    toast({
-      title: "Account created!",
-      description: "Welcome to Study Share. Start exploring papers!",
-    });
-    onOpenChange(false);
+    setIsLoading(true);
+
+    try {
+      const redirectUrl = `${window.location.origin}/dashboard`;
+
+      const { error } = await supabase.auth.signUp({
+        email: signUpData.email,
+        password: signUpData.password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            name: signUpData.name,
+            mobile: signUpData.mobile,
+            study_level: signUpData.studyLevel,
+            subjects_of_interest: selectedSubjects,
+            career_goals: signUpData.careerGoals,
+          },
+        },
+      });
+
+      if (error) {
+        if (error.message.includes("already registered")) {
+          toast({
+            title: "Account exists",
+            description: "This email is already registered. Please sign in instead.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Sign up failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      // Update profile with additional info
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("profiles").update({
+          study_level: signUpData.studyLevel,
+          subjects_of_interest: selectedSubjects,
+          career_goals: signUpData.careerGoals,
+        }).eq("user_id", user.id);
+      }
+
+      toast({
+        title: "Account created!",
+        description: "Welcome to Study Share. Start exploring papers!",
+      });
+      onOpenChange(false);
+      navigate("/dashboard");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -164,6 +263,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                     value={signInData.identifier}
                     onChange={(e) => setSignInData({ ...signInData, identifier: e.target.value })}
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 {errors.identifier && <p className="text-sm text-destructive">{errors.identifier}</p>}
@@ -181,6 +281,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                     value={signInData.password}
                     onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
@@ -196,8 +297,12 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                 </a>
               </div>
 
-              <Button type="submit" size="lg" className="w-full gap-2">
-                <LogIn className="h-4 w-4" />
+              <Button type="submit" size="lg" className="w-full gap-2" disabled={isLoading}>
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <LogIn className="h-4 w-4" />
+                )}
                 Sign In
               </Button>
 
@@ -225,6 +330,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                   value={signUpData.name}
                   onChange={(e) => setSignUpData({ ...signUpData, name: e.target.value })}
                   required
+                  disabled={isLoading}
                 />
                 {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
               </div>
@@ -242,6 +348,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                       value={signUpData.email}
                       onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
@@ -258,6 +365,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                       value={signUpData.mobile}
                       onChange={(e) => setSignUpData({ ...signUpData, mobile: e.target.value })}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   {errors.mobile && <p className="text-sm text-destructive">{errors.mobile}</p>}
@@ -276,6 +384,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                     value={signUpData.password}
                     onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
@@ -286,6 +395,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                 <Select
                   value={signUpData.studyLevel}
                   onValueChange={(value) => setSignUpData({ ...signUpData, studyLevel: value })}
+                  disabled={isLoading}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select your study level" />
@@ -311,6 +421,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                         id={`signup-${subject}`}
                         checked={selectedSubjects.includes(subject)}
                         onCheckedChange={() => toggleSubject(subject)}
+                        disabled={isLoading}
                       />
                       <label
                         htmlFor={`signup-${subject}`}
@@ -331,11 +442,16 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                   value={signUpData.careerGoals}
                   onChange={(e) => setSignUpData({ ...signUpData, careerGoals: e.target.value })}
                   className="min-h-[80px]"
+                  disabled={isLoading}
                 />
               </div>
 
-              <Button type="submit" size="lg" className="w-full gap-2">
-                <UserPlus className="h-4 w-4" />
+              <Button type="submit" size="lg" className="w-full gap-2" disabled={isLoading}>
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <UserPlus className="h-4 w-4" />
+                )}
                 Create Free Account
               </Button>
 

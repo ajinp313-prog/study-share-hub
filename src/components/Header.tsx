@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, BookOpen, Award, User, LogOut } from "lucide-react";
+import { Menu, X, BookOpen, User, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,13 +73,6 @@ const Header = () => {
             >
               Browse Papers
             </button>
-            <a href="#upload" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Upload
-            </a>
-            <a href="#rewards" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-              <Award className="h-4 w-4" />
-              Rewards
-            </a>
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
@@ -159,13 +152,6 @@ const Header = () => {
               >
                 Browse Papers
               </button>
-              <a href="#upload" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2">
-                Upload
-              </a>
-              <a href="#rewards" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center gap-1">
-                <Award className="h-4 w-4" />
-                Rewards
-              </a>
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
                 {user ? (
                   <>

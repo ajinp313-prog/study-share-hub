@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      papers: {
+        Row: {
+          created_at: string
+          description: string | null
+          downloads: number
+          file_path: string
+          file_size: number
+          id: string
+          level: string
+          status: string
+          subject: string
+          title: string
+          university: string | null
+          updated_at: string
+          user_id: string
+          year: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          downloads?: number
+          file_path: string
+          file_size: number
+          id?: string
+          level: string
+          status?: string
+          subject: string
+          title: string
+          university?: string | null
+          updated_at?: string
+          user_id: string
+          year?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          downloads?: number
+          file_path?: string
+          file_size?: number
+          id?: string
+          level?: string
+          status?: string
+          subject?: string
+          title?: string
+          university?: string | null
+          updated_at?: string
+          user_id?: string
+          year?: number | null
+        }
+        Relationships: []
+      }
+      points_history: {
+        Row: {
+          action: string
+          created_at: string
+          description: string | null
+          id: string
+          points: number
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          points: number
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          points?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           career_goals: string | null
@@ -21,6 +99,7 @@ export type Database = {
           id: string
           mobile: string
           name: string
+          points: number
           study_level: string | null
           subjects_of_interest: string[] | null
           updated_at: string
@@ -32,6 +111,7 @@ export type Database = {
           id?: string
           mobile: string
           name: string
+          points?: number
           study_level?: string | null
           subjects_of_interest?: string[] | null
           updated_at?: string
@@ -43,6 +123,7 @@ export type Database = {
           id?: string
           mobile?: string
           name?: string
+          points?: number
           study_level?: string | null
           subjects_of_interest?: string[] | null
           updated_at?: string

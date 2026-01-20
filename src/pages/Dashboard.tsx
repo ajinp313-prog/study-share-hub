@@ -5,22 +5,24 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PaperUpload } from "@/components/PaperUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   BookOpen, 
-  Upload, 
   Award, 
   FileText, 
   TrendingUp, 
   Star,
   Clock,
-  Download
+  Download,
+  Upload
 } from "lucide-react";
 
 interface Profile {
   name: string;
   study_level: string | null;
   subjects_of_interest: string[] | null;
+  points: number;
 }
 
 const Dashboard = () => {
@@ -39,7 +41,7 @@ const Dashboard = () => {
       if (user) {
         const { data } = await supabase
           .from("profiles")
-          .select("name, study_level, subjects_of_interest")
+          .select("name, study_level, subjects_of_interest, points")
           .eq("user_id", user.id)
           .maybeSingle();
         
@@ -67,7 +69,7 @@ const Dashboard = () => {
   const stats = [
     { label: "Papers Downloaded", value: "0", icon: Download, color: "text-blue-500" },
     { label: "Papers Uploaded", value: "0", icon: Upload, color: "text-green-500" },
-    { label: "Points Earned", value: "0", icon: Star, color: "text-yellow-500" },
+    { label: "Points Earned", value: String(profile?.points || 0), icon: Star, color: "text-yellow-500" },
     { label: "Days Active", value: "1", icon: Clock, color: "text-purple-500" },
   ];
 
@@ -125,7 +127,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-lg bg-green-500/10">
@@ -133,14 +135,12 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Upload Paper</CardTitle>
-                  <CardDescription>Share & earn reward points</CardDescription>
+                  <CardDescription>Share & earn 50 points</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
-                Upload Now
-              </Button>
+              <PaperUpload />
             </CardContent>
           </Card>
 

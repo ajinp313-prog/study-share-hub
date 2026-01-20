@@ -11,7 +11,7 @@ const Footer = () => {
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
                 <BookOpen className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold">PaperShare</span>
+              <span className="text-xl font-bold">Study Share</span>
             </a>
             <p className="text-sm opacity-70 mb-4">
               Empowering students to share knowledge and succeed together.
@@ -57,7 +57,7 @@ const Footer = () => {
             <ul className="space-y-2 text-sm opacity-70">
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                hello@papershare.com
+                hello@studyshare.com
               </li>
               <li><a href="#" className="hover:opacity-100 transition-opacity">Support Center</a></li>
               <li><a href="#" className="hover:opacity-100 transition-opacity">Privacy Policy</a></li>
@@ -67,7 +67,7 @@ const Footer = () => {
         </div>
 
         <div className="mt-12 pt-8 border-t border-primary-foreground/10 text-center text-sm opacity-60">
-          <p>© 2024 PaperShare. Made with ❤️ for students worldwide.</p>
+          <p>© 2024 Study Share. Made with ❤️ for students worldwide.</p>
         </div>
       </div>
     </footer>

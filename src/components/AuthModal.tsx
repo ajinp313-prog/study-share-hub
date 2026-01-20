@@ -119,7 +119,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
 
     toast({
       title: "Account created!",
-      description: "Welcome to PaperShare. Start exploring papers!",
+      description: "Welcome to Study Share. Start exploring papers!",
     });
     onOpenChange(false);
   };
@@ -130,7 +130,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Sparkles className="h-5 w-5 text-primary" />
-            Welcome to PaperShare
+            Welcome to Study Share
           </DialogTitle>
           <DialogDescription>
             Access thousands of free question papers

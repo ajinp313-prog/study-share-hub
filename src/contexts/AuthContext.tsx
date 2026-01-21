@@ -54,16 +54,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const signOut = async () => {
+    // Clear local state first
+    setSession(null);
+    setUser(null);
+    
     try {
       await supabase.auth.signOut({ scope: 'local' });
     } catch (error) {
-      // Even if server-side signout fails (e.g., session already expired),
-      // we still clear the local state
       console.warn("Sign out error (session may already be expired):", error);
     }
-    // Always clear local state
-    setSession(null);
-    setUser(null);
+    
+    // Fallback: manually clear Supabase auth token from localStorage
+    const storageKey = `sb-styrpqafgeexrhlxegkl-auth-token`;
+    localStorage.removeItem(storageKey);
   };
 
   return (

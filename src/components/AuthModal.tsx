@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { UserPlus, LogIn, Mail, Lock, Sparkles, Phone, Loader2, Eye, EyeOff } from "lucide-react";
+import { UserPlus, LogIn, Mail, Lock, Sparkles, Phone, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
@@ -56,11 +56,13 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
   const { toast } = useToast();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(defaultTab);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showSignInPassword, setShowSignInPassword] = useState(false);
   const [showSignUpPassword, setShowSignUpPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   
   const [signInData, setSignInData] = useState({
     identifier: "",
@@ -134,6 +136,50 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
       });
       onOpenChange(false);
       navigate("/dashboard");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    if (!forgotPasswordEmail.trim() || !forgotPasswordEmail.includes("@")) {
+      setErrors({ forgotEmail: "Please enter a valid email address" });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Check your email",
+        description: "We've sent you a password reset link. Please check your inbox.",
+      });
+      setShowForgotPassword(false);
+      setForgotPasswordEmail("");
     } catch (error) {
       toast({
         title: "Error",
@@ -226,17 +272,59 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(open) => { onOpenChange(open); if (!open) setShowForgotPassword(false); }}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Sparkles className="h-5 w-5 text-primary" />
-            Welcome to Study Share
+            {showForgotPassword ? "Reset Password" : "Welcome to Study Share"}
           </DialogTitle>
           <DialogDescription>
-            Access thousands of free question papers
+            {showForgotPassword 
+              ? "Enter your email to receive a password reset link" 
+              : "Access thousands of free question papers"}
           </DialogDescription>
         </DialogHeader>
+
+        {showForgotPassword ? (
+          <form onSubmit={handleForgotPassword} className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="forgot-email">Email Address</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  placeholder="Enter your email address"
+                  className="pl-10"
+                  value={forgotPasswordEmail}
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              {errors.forgotEmail && <p className="text-sm text-destructive">{errors.forgotEmail}</p>}
+            </div>
+
+            <Button type="submit" size="lg" className="w-full gap-2" disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Mail className="h-4 w-4" />
+              )}
+              Send Reset Link
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => { setShowForgotPassword(false); setErrors({}); setForgotPasswordEmail(""); }}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mx-auto"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Sign In
+            </button>
+          </form>
+        ) : (
 
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as "signin" | "signup"); setErrors({}); }} className="mt-4">
           <TabsList className="grid w-full grid-cols-2">
@@ -302,9 +390,13 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                   <Checkbox id="remember" />
                   <span className="text-muted-foreground">Remember me</span>
                 </label>
-                <a href="#" className="text-primary hover:underline">
+                <button
+                  type="button"
+                  onClick={() => { setShowForgotPassword(true); setErrors({}); }}
+                  className="text-primary hover:underline"
+                >
                   Forgot password?
-                </a>
+                </button>
               </div>
 
               <Button type="submit" size="lg" className="w-full gap-2" disabled={isLoading}>
@@ -486,6 +578,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
             </form>
           </TabsContent>
         </Tabs>
+        )}
       </DialogContent>
     </Dialog>
   );

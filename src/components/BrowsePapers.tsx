@@ -1,107 +1,136 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Download, Eye, Filter, GraduationCap, Building2 } from "lucide-react";
+import { Search, Download, Eye, GraduationCap, Building2, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-const paperCategories = [
-  { name: "Mathematics", count: 1245, icon: "📐" },
-  { name: "Physics", count: 892, icon: "⚡" },
-  { name: "Chemistry", count: 756, icon: "🧪" },
-  { name: "Computer Science", count: 1102, icon: "💻" },
-  { name: "Biology", count: 634, icon: "🧬" },
-  { name: "Economics", count: 421, icon: "📊" },
-];
-
-const recentPapers = [
-  {
-    title: "Advanced Calculus - Final Exam 2024",
-    university: "MIT",
-    subject: "Mathematics",
-    downloads: 234,
-    level: "Engineering",
-  },
-  {
-    title: "Organic Chemistry Mid-Term",
-    university: "Stanford University",
-    subject: "Chemistry",
-    downloads: 189,
-    level: "Undergraduate",
-  },
-  {
-    title: "Data Structures & Algorithms",
-    university: "IIT Delhi",
-    subject: "Computer Science",
-    downloads: 567,
-    level: "Engineering",
-  },
-  {
-    title: "Microeconomics Quiz Paper",
-    university: "Harvard",
-    subject: "Economics",
-    downloads: 123,
-    level: "Undergraduate",
-  },
-];
+interface Paper {
+  id: string;
+  title: string;
+  subject: string;
+  level: string;
+  university: string | null;
+  year: number | null;
+  downloads: number;
+  file_path: string;
+}
 
 const BrowsePapers = () => {
-  return (
-    <section id="browse" className="py-20">
-      <div className="container">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-            Browse Question Papers
-          </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Find papers by subject, university, or study level. All papers are free to access.
-          </p>
-        </div>
+  const [papers, setPapers] = useState<Paper[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [downloading, setDownloading] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetchPapers();
+  }, []);
+
+  const fetchPapers = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("papers")
+      .select("id, title, subject, level, university, year, downloads, file_path")
+      .eq("status", "approved")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching papers:", error);
+      toast.error("Failed to load papers");
+    } else {
+      setPapers(data || []);
+    }
+    setLoading(false);
+  };
+
+  const handleView = (filePath: string) => {
+    const { data } = supabase.storage.from("papers").getPublicUrl(filePath);
+    window.open(data.publicUrl, "_blank");
+  };
+
+  const handleDownload = async (paper: Paper) => {
+    setDownloading(paper.id);
+    
+    try {
+      // Increment download count
+      const { error: rpcError } = await supabase.rpc("increment_download_count", {
+        paper_id: paper.id,
+      });
+
+      if (rpcError) {
+        console.error("Error incrementing download:", rpcError);
+      }
+
+      // Get the file URL and trigger download
+      const { data } = supabase.storage.from("papers").getPublicUrl(paper.file_path);
+      
+      // Create a temporary link to trigger download
+      const response = await fetch(data.publicUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${paper.title}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      // Update local state
+      setPapers(papers.map(p => 
+        p.id === paper.id ? { ...p, downloads: p.downloads + 1 } : p
+      ));
+
+      toast.success("Download started!");
+    } catch (error) {
+      console.error("Download error:", error);
+      toast.error("Failed to download paper");
+    }
+    
+    setDownloading(null);
+  };
+
+  const filteredPapers = papers.filter(paper =>
+    paper.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    paper.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (paper.university?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+  );
+
+  return (
+    <section id="browse" className="py-8">
+      <div className="container">
         {/* Search Bar */}
-        <div className="max-w-2xl mx-auto mb-12">
+        <div className="max-w-2xl mx-auto mb-8">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               placeholder="Search by subject, university, or keyword..."
-              className="pl-12 pr-20 h-14 text-base rounded-xl shadow-card"
+              className="pl-12 h-12 text-base rounded-xl"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <Button className="absolute right-2 top-1/2 -translate-y-1/2 gap-2">
-              <Filter className="h-4 w-4" />
-              Filter
-            </Button>
           </div>
         </div>
 
-        {/* Categories */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
-          {paperCategories.map((category) => (
-            <Card
-              key={category.name}
-              className="cursor-pointer hover:shadow-card-hover transition-all hover:-translate-y-1 border-border"
-            >
-              <CardContent className="p-4 text-center">
-                <span className="text-3xl mb-2 block">{category.icon}</span>
-                <h3 className="font-semibold text-foreground text-sm">{category.name}</h3>
-                <p className="text-xs text-muted-foreground">{category.count} papers</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Recent Papers */}
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-foreground">Recently Added</h3>
-            <Button variant="ghost" className="text-primary">
-              View All
-            </Button>
+        {/* Papers List */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-
+        ) : filteredPapers.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">
+              {searchQuery ? "No papers match your search." : "No approved papers available yet."}
+            </p>
+          </div>
+        ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            {recentPapers.map((paper, index) => (
+            {filteredPapers.map((paper) => (
               <Card
-                key={index}
-                className="hover:shadow-card-hover transition-all border-border group"
+                key={paper.id}
+                className="hover:shadow-md transition-all border-border group"
               >
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between gap-4">
@@ -109,10 +138,13 @@ const BrowsePapers = () => {
                       <h4 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
                         {paper.title}
                       </h4>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                        <Building2 className="h-4 w-4" />
-                        {paper.university}
-                      </div>
+                      {paper.university && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                          <Building2 className="h-4 w-4" />
+                          {paper.university}
+                          {paper.year && <span>• {paper.year}</span>}
+                        </div>
+                      )}
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="text-xs">
                           {paper.subject}
@@ -124,13 +156,27 @@ const BrowsePapers = () => {
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Button size="sm" variant="outline" className="gap-1">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="gap-1"
+                        onClick={() => handleView(paper.file_path)}
+                      >
                         <Eye className="h-4 w-4" />
                         View
                       </Button>
-                      <Button size="sm" className="gap-1">
-                        <Download className="h-4 w-4" />
-                        Get
+                      <Button 
+                        size="sm" 
+                        className="gap-1"
+                        onClick={() => handleDownload(paper)}
+                        disabled={downloading === paper.id}
+                      >
+                        {downloading === paper.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                        Download
                       </Button>
                     </div>
                   </div>
@@ -142,7 +188,7 @@ const BrowsePapers = () => {
               </Card>
             ))}
           </div>
-        </div>
+        )}
       </div>
     </section>
   );

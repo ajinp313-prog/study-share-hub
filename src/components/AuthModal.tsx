@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { UserPlus, LogIn, Mail, Lock, Sparkles, Phone, Loader2 } from "lucide-react";
+import { UserPlus, LogIn, Mail, Lock, Sparkles, Phone, Loader2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
@@ -59,6 +59,8 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
   
   const [signInData, setSignInData] = useState({
     identifier: "",
@@ -275,14 +277,22 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="signin-password"
-                    type="password"
+                    type={showSignInPassword ? "text" : "password"}
                     placeholder="Enter your password"
-                    className="pl-10"
+                    className="pl-10 pr-10"
                     value={signInData.password}
                     onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
                     required
                     disabled={isLoading}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignInPassword(!showSignInPassword)}
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showSignInPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
                 {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
               </div>
@@ -378,14 +388,22 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="signup-password"
-                    type="password"
+                    type={showSignUpPassword ? "text" : "password"}
                     placeholder="Create a password (min 6 characters)"
-                    className="pl-10"
+                    className="pl-10 pr-10"
                     value={signUpData.password}
                     onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
                     required
                     disabled={isLoading}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignUpPassword(!showSignUpPassword)}
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showSignUpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
                 {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
               </div>

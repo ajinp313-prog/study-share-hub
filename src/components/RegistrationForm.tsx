@@ -11,6 +11,7 @@ import { UserPlus, Sparkles, Mail, Phone, Lock, Loader2, Eye, EyeOff } from "luc
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import AuthModal from "@/components/AuthModal";
 
 const subjects = [
   "Mathematics",
@@ -40,6 +41,7 @@ const RegistrationForm = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -312,11 +314,27 @@ const RegistrationForm = () => {
                 <p className="text-center text-sm text-muted-foreground">
                   By signing up, you agree to our Terms of Service and Privacy Policy
                 </p>
+
+                <p className="text-center text-sm text-muted-foreground">
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setShowAuthModal(true)}
+                    className="text-primary font-medium hover:underline"
+                  >
+                    Sign In
+                  </button>
+                </p>
               </form>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <AuthModal 
+        open={showAuthModal} 
+        onOpenChange={setShowAuthModal} 
+      />
     </section>
   );
 };

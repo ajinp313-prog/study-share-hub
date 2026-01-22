@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperUpload } from "@/components/PaperUpload";
+import RewardsComingSoon from "@/components/RewardsComingSoon";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   BookOpen, 
@@ -148,24 +149,34 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-lg bg-yellow-500/10">
                   <Award className="h-6 w-6 text-yellow-500" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Rewards</CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    Rewards
+                    <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-accent/10 text-accent">
+                      Coming Soon
+                    </span>
+                  </CardTitle>
                   <CardDescription>Redeem your earned points</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" disabled>
                 View Rewards
               </Button>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Rewards Coming Soon */}
+        <div className="mb-8">
+          <RewardsComingSoon userPoints={profile?.points || 0} />
         </div>
 
         {/* Recent Activity / Recommended */}

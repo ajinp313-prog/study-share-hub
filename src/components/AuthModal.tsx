@@ -109,17 +109,15 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
       const isEmail = signInData.identifier.includes("@");
       let emailToUse = signInData.identifier;
       
-      // If it's a phone number, look up the email from profiles
+      // If it's a phone number, look up the email using RPC function (bypasses RLS)
       if (!isEmail) {
         const cleanedMobile = signInData.identifier.replace(/[\s\-]/g, "");
         
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("user_id")
-          .or(`mobile.eq.${cleanedMobile},mobile.ilike.%${cleanedMobile}%`)
-          .single();
-        
-        if (profileError || !profile) {
+        // Use the SECURITY DEFINER RPC function to get email by mobile
+        const { data: emailResult, error: rpcError } = await supabase
+          .rpc('get_user_email_by_mobile', { mobile_number: cleanedMobile });
+          
+        if (rpcError || !emailResult || emailResult.length === 0) {
           toast({
             title: "Login failed",
             description: "No account found with this mobile number. Please check and try again.",
@@ -129,44 +127,8 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
           return;
         }
         
-        // Get the user's email from auth using their user_id
-        const { data: authUser, error: authError } = await supabase.auth.admin?.getUserById?.(profile.user_id) || { data: null, error: null };
-        
-        // Since we can't access admin API from client, we need to get email differently
-        // Look up the email stored in the profiles or use a database function
-        const { data: userData } = await supabase
-          .from("profiles")
-          .select("user_id")
-          .eq("user_id", profile.user_id)
-          .single();
-          
-        if (!userData) {
-          toast({
-            title: "Login failed",
-            description: "Account not found. Please try again.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-        
-        // We need to get the email - let's query auth.users via RPC or store email in profiles
-        // For now, let's check if email is stored in profiles
-        const { data: profileWithEmail } = await supabase
-          .rpc('get_user_email_by_mobile', { mobile_number: cleanedMobile })
-          .single();
-          
-        if (profileWithEmail?.email) {
-          emailToUse = profileWithEmail.email;
-        } else {
-          toast({
-            title: "Login failed",
-            description: "Could not find account with this mobile number.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
+        // The RPC returns a table, get the first row's email
+        emailToUse = emailResult[0].email;
       }
       
       const { error } = await supabase.auth.signInWithPassword({

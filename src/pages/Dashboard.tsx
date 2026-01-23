@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperUpload } from "@/components/PaperUpload";
 import RewardsComingSoon from "@/components/RewardsComingSoon";
+import ProfileEditModal from "@/components/ProfileEditModal";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   BookOpen, 
@@ -39,39 +40,39 @@ const Dashboard = () => {
     }
   }, [user, loading, navigate]);
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (user) {
-        // Fetch profile
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("name, study_level, subjects_of_interest, points, created_at")
-          .eq("user_id", user.id)
-          .maybeSingle();
+  const fetchUserData = useCallback(async () => {
+    if (user) {
+      // Fetch profile
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("name, study_level, subjects_of_interest, points, created_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (profileData) {
+        setProfile(profileData);
         
-        if (profileData) {
-          setProfile(profileData);
-          
-          // Calculate days active
-          const createdDate = new Date(profileData.created_at);
-          const now = new Date();
-          const diffTime = Math.abs(now.getTime() - createdDate.getTime());
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          setDaysActive(diffDays || 1);
-        }
-
-        // Fetch papers count
-        const { count: papersCount } = await supabase
-          .from("papers")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id);
-        
-        setPapersUploaded(papersCount || 0);
+        // Calculate days active
+        const createdDate = new Date(profileData.created_at);
+        const now = new Date();
+        const diffTime = Math.abs(now.getTime() - createdDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        setDaysActive(diffDays || 1);
       }
-    };
 
-    fetchUserData();
+      // Fetch papers count
+      const { count: papersCount } = await supabase
+        .from("papers")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      
+      setPapersUploaded(papersCount || 0);
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchUserData();
+  }, [fetchUserData]);
 
   if (loading) {
     return (
@@ -97,15 +98,24 @@ const Dashboard = () => {
       <Header />
       <main className="container py-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Welcome back, {profile?.name || "Student"}! 👋
-          </h1>
-          <p className="text-muted-foreground">
-            {profile?.study_level 
-              ? `${profile.study_level} Student`
-              : "Ready to explore question papers?"}
-          </p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Welcome back, {profile?.name || "Student"}! 👋
+            </h1>
+            <p className="text-muted-foreground">
+              {profile?.study_level 
+                ? `${profile.study_level} Student`
+                : "Ready to explore question papers?"}
+            </p>
+          </div>
+          {profile && user && (
+            <ProfileEditModal 
+              profile={profile} 
+              userId={user.id} 
+              onProfileUpdated={fetchUserData}
+            />
+          )}
         </div>
 
         {/* Stats Grid */}

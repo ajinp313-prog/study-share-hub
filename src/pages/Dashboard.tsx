@@ -30,6 +30,8 @@ const Dashboard = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [papersUploaded, setPapersUploaded] = useState(0);
+  const [daysActive, setDaysActive] = useState(1);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -38,21 +40,37 @@ const Dashboard = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchUserData = async () => {
       if (user) {
-        const { data } = await supabase
+        // Fetch profile
+        const { data: profileData } = await supabase
           .from("profiles")
-          .select("name, study_level, subjects_of_interest, points")
+          .select("name, study_level, subjects_of_interest, points, created_at")
           .eq("user_id", user.id)
           .maybeSingle();
         
-        if (data) {
-          setProfile(data);
+        if (profileData) {
+          setProfile(profileData);
+          
+          // Calculate days active
+          const createdDate = new Date(profileData.created_at);
+          const now = new Date();
+          const diffTime = Math.abs(now.getTime() - createdDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          setDaysActive(diffDays || 1);
         }
+
+        // Fetch papers count
+        const { count: papersCount } = await supabase
+          .from("papers")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        
+        setPapersUploaded(papersCount || 0);
       }
     };
 
-    fetchProfile();
+    fetchUserData();
   }, [user]);
 
   if (loading) {
@@ -69,9 +87,9 @@ const Dashboard = () => {
 
   const stats = [
     { label: "Papers Downloaded", value: "0", icon: Download, color: "text-blue-500" },
-    { label: "Papers Uploaded", value: "0", icon: Upload, color: "text-green-500" },
+    { label: "Papers Uploaded", value: String(papersUploaded), icon: Upload, color: "text-green-500" },
     { label: "Points Earned", value: String(profile?.points || 0), icon: Star, color: "text-yellow-500" },
-    { label: "Days Active", value: "1", icon: Clock, color: "text-purple-500" },
+    { label: "Days Active", value: String(daysActive), icon: Clock, color: "text-purple-500" },
   ];
 
   return (

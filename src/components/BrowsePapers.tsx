@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Download, Eye, GraduationCap, Building2, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Download, Eye, GraduationCap, Building2, Loader2, Filter, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -23,6 +24,11 @@ const BrowsePapers = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [downloading, setDownloading] = useState<string | null>(null);
+  
+  // Filter states
+  const [subjectFilter, setSubjectFilter] = useState<string>("all");
+  const [levelFilter, setLevelFilter] = useState<string>("all");
+  const [yearFilter, setYearFilter] = useState<string>("all");
 
   useEffect(() => {
     fetchPapers();
@@ -44,6 +50,14 @@ const BrowsePapers = () => {
     }
     setLoading(false);
   };
+
+  // Extract unique values for filter dropdowns
+  const filterOptions = useMemo(() => {
+    const subjects = [...new Set(papers.map(p => p.subject))].sort();
+    const levels = [...new Set(papers.map(p => p.level))].sort();
+    const years = [...new Set(papers.map(p => p.year).filter(Boolean))].sort((a, b) => (b || 0) - (a || 0));
+    return { subjects, levels, years };
+  }, [papers]);
 
   const handleView = (filePath: string) => {
     const { data } = supabase.storage.from("papers").getPublicUrl(filePath);
@@ -92,17 +106,41 @@ const BrowsePapers = () => {
     setDownloading(null);
   };
 
-  const filteredPapers = papers.filter(paper =>
-    paper.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    paper.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (paper.university?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
-  );
+  const clearFilters = () => {
+    setSubjectFilter("all");
+    setLevelFilter("all");
+    setYearFilter("all");
+    setSearchQuery("");
+  };
+
+  const hasActiveFilters = subjectFilter !== "all" || levelFilter !== "all" || yearFilter !== "all" || searchQuery !== "";
+
+  const filteredPapers = useMemo(() => {
+    return papers.filter(paper => {
+      // Text search
+      const matchesSearch = searchQuery === "" ||
+        paper.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        paper.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (paper.university?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+      
+      // Subject filter
+      const matchesSubject = subjectFilter === "all" || paper.subject === subjectFilter;
+      
+      // Level filter
+      const matchesLevel = levelFilter === "all" || paper.level === levelFilter;
+      
+      // Year filter
+      const matchesYear = yearFilter === "all" || String(paper.year) === yearFilter;
+      
+      return matchesSearch && matchesSubject && matchesLevel && matchesYear;
+    });
+  }, [papers, searchQuery, subjectFilter, levelFilter, yearFilter]);
 
   return (
     <section id="browse" className="py-8">
       <div className="container">
         {/* Search Bar */}
-        <div className="max-w-2xl mx-auto mb-8">
+        <div className="max-w-2xl mx-auto mb-6">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
@@ -113,6 +151,79 @@ const BrowsePapers = () => {
             />
           </div>
         </div>
+
+        {/* Filter Dropdowns */}
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            <span>Filters:</span>
+          </div>
+          
+          {/* Subject Filter */}
+          <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+            <SelectTrigger className="w-[160px] bg-background">
+              <SelectValue placeholder="Subject" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border border-border z-50">
+              <SelectItem value="all">All Subjects</SelectItem>
+              {filterOptions.subjects.map(subject => (
+                <SelectItem key={subject} value={subject}>
+                  {subject}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Level Filter */}
+          <Select value={levelFilter} onValueChange={setLevelFilter}>
+            <SelectTrigger className="w-[160px] bg-background">
+              <SelectValue placeholder="Level" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border border-border z-50">
+              <SelectItem value="all">All Levels</SelectItem>
+              {filterOptions.levels.map(level => (
+                <SelectItem key={level} value={level}>
+                  {level}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Year Filter */}
+          <Select value={yearFilter} onValueChange={setYearFilter}>
+            <SelectTrigger className="w-[140px] bg-background">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border border-border z-50">
+              <SelectItem value="all">All Years</SelectItem>
+              {filterOptions.years.map(year => (
+                <SelectItem key={year} value={String(year)}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={clearFilters}
+              className="gap-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* Results Count */}
+        {!loading && (
+          <p className="text-center text-sm text-muted-foreground mb-6">
+            Showing {filteredPapers.length} of {papers.length} papers
+          </p>
+        )}
 
         {/* Papers List */}
         {loading ? (

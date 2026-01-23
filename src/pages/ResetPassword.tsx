@@ -8,6 +8,7 @@ import { Lock, Loader2, Eye, EyeOff, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator";
 
 const resetPasswordSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -154,6 +155,7 @@ const ResetPassword = () => {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              <PasswordStrengthIndicator password={formData.password} />
               {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
             </div>
 

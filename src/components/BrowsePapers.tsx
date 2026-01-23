@@ -26,9 +26,20 @@ const BrowsePapers = () => {
   const [downloading, setDownloading] = useState<string | null>(null);
   
   // Filter states
-  const [subjectFilter, setSubjectFilter] = useState<string>("all");
   const [levelFilter, setLevelFilter] = useState<string>("all");
-  const [yearFilter, setYearFilter] = useState<string>("all");
+  const [yearFilter, setYearFilter] = useState<string>("");
+
+  // Predefined study levels
+  const studyLevels = [
+    "10th",
+    "+1",
+    "+2",
+    "Undergraduate",
+    "Graduate",
+    "Masters",
+    "Engineering",
+    "PhD"
+  ];
 
   useEffect(() => {
     fetchPapers();
@@ -51,12 +62,9 @@ const BrowsePapers = () => {
     setLoading(false);
   };
 
-  // Extract unique values for filter dropdowns
-  const filterOptions = useMemo(() => {
-    const subjects = [...new Set(papers.map(p => p.subject))].sort();
-    const levels = [...new Set(papers.map(p => p.level))].sort();
-    const years = [...new Set(papers.map(p => p.year).filter(Boolean))].sort((a, b) => (b || 0) - (a || 0));
-    return { subjects, levels, years };
+  // Extract unique years from papers for reference
+  const availableYears = useMemo(() => {
+    return [...new Set(papers.map(p => p.year).filter(Boolean))].sort((a, b) => (b || 0) - (a || 0));
   }, [papers]);
 
   const handleView = (filePath: string) => {
@@ -107,13 +115,12 @@ const BrowsePapers = () => {
   };
 
   const clearFilters = () => {
-    setSubjectFilter("all");
     setLevelFilter("all");
-    setYearFilter("all");
+    setYearFilter("");
     setSearchQuery("");
   };
 
-  const hasActiveFilters = subjectFilter !== "all" || levelFilter !== "all" || yearFilter !== "all" || searchQuery !== "";
+  const hasActiveFilters = levelFilter !== "all" || yearFilter !== "" || searchQuery !== "";
 
   const filteredPapers = useMemo(() => {
     return papers.filter(paper => {
@@ -123,18 +130,15 @@ const BrowsePapers = () => {
         paper.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (paper.university?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
       
-      // Subject filter
-      const matchesSubject = subjectFilter === "all" || paper.subject === subjectFilter;
-      
       // Level filter
       const matchesLevel = levelFilter === "all" || paper.level === levelFilter;
       
-      // Year filter
-      const matchesYear = yearFilter === "all" || String(paper.year) === yearFilter;
+      // Year filter - partial match for typed input
+      const matchesYear = yearFilter === "" || String(paper.year).includes(yearFilter);
       
-      return matchesSearch && matchesSubject && matchesLevel && matchesYear;
+      return matchesSearch && matchesLevel && matchesYear;
     });
-  }, [papers, searchQuery, subjectFilter, levelFilter, yearFilter]);
+  }, [papers, searchQuery, levelFilter, yearFilter]);
 
   return (
     <section id="browse" className="py-8">
@@ -152,36 +156,21 @@ const BrowsePapers = () => {
           </div>
         </div>
 
-        {/* Filter Dropdowns */}
+        {/* Filter Options */}
         <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Filter className="h-4 w-4" />
             <span>Filters:</span>
           </div>
-          
-          {/* Subject Filter */}
-          <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-            <SelectTrigger className="w-[160px] bg-background">
-              <SelectValue placeholder="Subject" />
-            </SelectTrigger>
-            <SelectContent className="bg-background border border-border z-50">
-              <SelectItem value="all">All Subjects</SelectItem>
-              {filterOptions.subjects.map(subject => (
-                <SelectItem key={subject} value={subject}>
-                  {subject}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
 
           {/* Level Filter */}
           <Select value={levelFilter} onValueChange={setLevelFilter}>
-            <SelectTrigger className="w-[160px] bg-background">
-              <SelectValue placeholder="Level" />
+            <SelectTrigger className="w-[180px] bg-background">
+              <SelectValue placeholder="Select Level" />
             </SelectTrigger>
             <SelectContent className="bg-background border border-border z-50">
               <SelectItem value="all">All Levels</SelectItem>
-              {filterOptions.levels.map(level => (
+              {studyLevels.map(level => (
                 <SelectItem key={level} value={level}>
                   {level}
                 </SelectItem>
@@ -189,20 +178,14 @@ const BrowsePapers = () => {
             </SelectContent>
           </Select>
 
-          {/* Year Filter */}
-          <Select value={yearFilter} onValueChange={setYearFilter}>
-            <SelectTrigger className="w-[140px] bg-background">
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent className="bg-background border border-border z-50">
-              <SelectItem value="all">All Years</SelectItem>
-              {filterOptions.years.map(year => (
-                <SelectItem key={year} value={String(year)}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Year Filter - Text Input */}
+          <Input
+            type="text"
+            placeholder="Enter Year (e.g., 2024)"
+            className="w-[180px] bg-background"
+            value={yearFilter}
+            onChange={(e) => setYearFilter(e.target.value)}
+          />
 
           {/* Clear Filters */}
           {hasActiveFilters && (

@@ -18,6 +18,7 @@ import { UserPlus, LogIn, Mail, Lock, Sparkles, Phone, Loader2, Eye, EyeOff, Arr
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator";
 
 const subjects = [
   "Mathematics",
@@ -520,6 +521,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                     {showSignUpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                <PasswordStrengthIndicator password={signUpData.password} />
                 {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
               </div>
 

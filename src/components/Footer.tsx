@@ -62,7 +62,7 @@ const Footer = () => {
                   hello@studyshare.com
                 </a>
               </li>
-              <li><Link to="/" className="hover:opacity-100 transition-opacity">Support Center</Link></li>
+              <li><Link to="/help" className="hover:opacity-100 transition-opacity">Support Center</Link></li>
               <li><Link to="/" className="hover:opacity-100 transition-opacity">Privacy Policy</Link></li>
               <li><Link to="/" className="hover:opacity-100 transition-opacity">Terms of Service</Link></li>
             </ul>

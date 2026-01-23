@@ -17,7 +17,8 @@ import {
   Star,
   Clock,
   Download,
-  Upload
+  Upload,
+  HelpCircle
 } from "lucide-react";
 
 interface Profile {
@@ -197,6 +198,26 @@ const Dashboard = () => {
             <CardContent>
               <Button variant="outline" className="w-full" onClick={() => navigate("/rewards")}>
                 View Rewards
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Help & Support Card */}
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/help")}>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-blue-500/10">
+                  <HelpCircle className="h-6 w-6 text-blue-500" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Help & Support</CardTitle>
+                  <CardDescription>Raise a ticket for any issues</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" className="w-full" onClick={() => navigate("/help")}>
+                Get Help
               </Button>
             </CardContent>
           </Card>

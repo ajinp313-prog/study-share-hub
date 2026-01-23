@@ -4,10 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   FileText,
   CheckCircle,
@@ -17,6 +21,10 @@ import {
   Loader2,
   ShieldCheck,
   Building2,
+  Ticket,
+  MessageSquare,
+  AlertCircle,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,14 +41,42 @@ interface Paper {
   user_id: string;
 }
 
+interface SupportTicket {
+  id: string;
+  user_id: string;
+  subject: string;
+  category: string;
+  description: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+const ticketCategories: Record<string, string> = {
+  account: "Account Issues",
+  upload: "Paper Upload Problems",
+  download: "Download Issues",
+  points: "Points & Rewards",
+  technical: "Technical Bug",
+  suggestion: "Feature Suggestion",
+  other: "Other",
+};
+
 const Admin = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
   const [papers, setPapers] = useState<Paper[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingTickets, setLoadingTickets] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [updatingTicket, setUpdatingTicket] = useState<string | null>(null);
+  
+  // Ticket detail modal
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [adminResponse, setAdminResponse] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -72,6 +108,7 @@ const Admin = () => {
 
     if (data === true) {
       fetchPapers();
+      fetchTickets();
     }
   };
 
@@ -89,6 +126,22 @@ const Admin = () => {
       setPapers(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchTickets = async () => {
+    setLoadingTickets(true);
+    const { data, error } = await supabase
+      .from("support_tickets")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching tickets:", error);
+      toast.error("Failed to load support tickets");
+    } else {
+      setTickets(data || []);
+    }
+    setLoadingTickets(false);
   };
 
   const handleView = (filePath: string) => {
@@ -113,6 +166,28 @@ const Admin = () => {
     }
 
     setUpdating(null);
+  };
+
+  const handleUpdateTicketStatus = async (ticketId: string, newStatus: string) => {
+    setUpdatingTicket(ticketId);
+
+    const { error } = await supabase
+      .from("support_tickets")
+      .update({ status: newStatus })
+      .eq("id", ticketId);
+
+    if (error) {
+      console.error("Error updating ticket status:", error);
+      toast.error("Failed to update ticket status");
+    } else {
+      toast.success(`Ticket marked as ${newStatus.replace("_", " ")}`);
+      setTickets(tickets.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t)));
+      if (selectedTicket?.id === ticketId) {
+        setSelectedTicket({ ...selectedTicket, status: newStatus });
+      }
+    }
+
+    setUpdatingTicket(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -141,9 +216,38 @@ const Admin = () => {
     }
   };
 
+  const getTicketStatusBadge = (status: string) => {
+    switch (status) {
+      case "open":
+        return (
+          <Badge variant="secondary" className="gap-1">
+            <AlertCircle className="h-3 w-3" /> Open
+          </Badge>
+        );
+      case "in_progress":
+        return (
+          <Badge className="gap-1 bg-blue-500">
+            <Clock className="h-3 w-3" /> In Progress
+          </Badge>
+        );
+      case "resolved":
+        return (
+          <Badge className="gap-1 bg-green-500">
+            <CheckCircle className="h-3 w-3" /> Resolved
+          </Badge>
+        );
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
   const pendingPapers = papers.filter((p) => p.status === "pending");
   const approvedPapers = papers.filter((p) => p.status === "approved");
   const rejectedPapers = papers.filter((p) => p.status === "rejected");
+
+  const openTickets = tickets.filter((t) => t.status === "open");
+  const inProgressTickets = tickets.filter((t) => t.status === "in_progress");
+  const resolvedTickets = tickets.filter((t) => t.status === "resolved");
 
   if (authLoading || checkingRole) {
     return (
@@ -294,6 +398,90 @@ const Admin = () => {
     );
   };
 
+  const renderTicketList = (ticketList: SupportTicket[]) => {
+    if (loadingTickets) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    if (ticketList.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <Ticket className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
+          <p className="text-muted-foreground">No tickets in this category.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {ticketList.map((ticket) => (
+          <Card key={ticket.id} className="hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-blue-500/10">
+                      <MessageSquare className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-foreground">{ticket.subject}</h4>
+                      <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-muted-foreground">
+                        <Badge variant="outline" className="text-xs">
+                          {ticketCategories[ticket.category] || ticket.category}
+                        </Badge>
+                        <span>•</span>
+                        <span>{new Date(ticket.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                        {ticket.description}
+                      </p>
+                      <div className="mt-2">
+                        {getTicketStatusBadge(ticket.status)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedTicket(ticket);
+                      setAdminResponse("");
+                    }}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    View Details
+                  </Button>
+
+                  <Select
+                    value={ticket.status}
+                    onValueChange={(value) => handleUpdateTicketStatus(ticket.id, value)}
+                    disabled={updatingTicket === ticket.id}
+                  >
+                    <SelectTrigger className="w-[140px] bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border border-border z-50">
+                      <SelectItem value="open">Open</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="resolved">Resolved</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
@@ -305,16 +493,16 @@ const Admin = () => {
             <h1 className="text-3xl font-bold text-foreground">Admin Panel</h1>
           </div>
           <p className="text-muted-foreground">
-            Review and manage paper submissions
+            Manage paper submissions and support tickets
           </p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Pending Review
+                Pending Papers
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -347,40 +535,232 @@ const Admin = () => {
               </div>
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Open Tickets
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">
+                {openTickets.length}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                In Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                {inProgressTickets.length}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Resolved
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {resolvedTickets.length}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Papers Tabs */}
-        <Card>
-          <CardContent className="p-6">
-            <Tabs defaultValue="pending">
-              <TabsList className="mb-6">
-                <TabsTrigger value="pending" className="gap-2">
-                  <Clock className="h-4 w-4" />
-                  Pending ({pendingPapers.length})
-                </TabsTrigger>
-                <TabsTrigger value="approved" className="gap-2">
-                  <CheckCircle className="h-4 w-4" />
-                  Approved ({approvedPapers.length})
-                </TabsTrigger>
-                <TabsTrigger value="rejected" className="gap-2">
-                  <XCircle className="h-4 w-4" />
-                  Rejected ({rejectedPapers.length})
-                </TabsTrigger>
-              </TabsList>
+        {/* Main Tabs: Papers & Tickets */}
+        <Tabs defaultValue="papers" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="papers" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Papers ({papers.length})
+            </TabsTrigger>
+            <TabsTrigger value="tickets" className="gap-2">
+              <Ticket className="h-4 w-4" />
+              Support Tickets ({tickets.length})
+            </TabsTrigger>
+          </TabsList>
 
-              <TabsContent value="pending">
-                {renderPaperList(pendingPapers)}
-              </TabsContent>
-              <TabsContent value="approved">
-                {renderPaperList(approvedPapers)}
-              </TabsContent>
-              <TabsContent value="rejected">
-                {renderPaperList(rejectedPapers)}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+          {/* Papers Tab */}
+          <TabsContent value="papers">
+            <Card>
+              <CardContent className="p-6">
+                <Tabs defaultValue="pending">
+                  <TabsList className="mb-6">
+                    <TabsTrigger value="pending" className="gap-2">
+                      <Clock className="h-4 w-4" />
+                      Pending ({pendingPapers.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="approved" className="gap-2">
+                      <CheckCircle className="h-4 w-4" />
+                      Approved ({approvedPapers.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="rejected" className="gap-2">
+                      <XCircle className="h-4 w-4" />
+                      Rejected ({rejectedPapers.length})
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="pending">
+                    {renderPaperList(pendingPapers)}
+                  </TabsContent>
+                  <TabsContent value="approved">
+                    {renderPaperList(approvedPapers)}
+                  </TabsContent>
+                  <TabsContent value="rejected">
+                    {renderPaperList(rejectedPapers)}
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tickets Tab */}
+          <TabsContent value="tickets">
+            <Card>
+              <CardContent className="p-6">
+                <Tabs defaultValue="open">
+                  <TabsList className="mb-6">
+                    <TabsTrigger value="open" className="gap-2">
+                      <AlertCircle className="h-4 w-4" />
+                      Open ({openTickets.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="in_progress" className="gap-2">
+                      <Clock className="h-4 w-4" />
+                      In Progress ({inProgressTickets.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="resolved" className="gap-2">
+                      <CheckCircle className="h-4 w-4" />
+                      Resolved ({resolvedTickets.length})
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="open">
+                    {renderTicketList(openTickets)}
+                  </TabsContent>
+                  <TabsContent value="in_progress">
+                    {renderTicketList(inProgressTickets)}
+                  </TabsContent>
+                  <TabsContent value="resolved">
+                    {renderTicketList(resolvedTickets)}
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
+
+      {/* Ticket Detail Modal */}
+      <Dialog open={!!selectedTicket} onOpenChange={() => setSelectedTicket(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Ticket Details
+            </DialogTitle>
+            <DialogDescription>
+              Review and respond to this support ticket
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedTicket && (
+            <div className="space-y-6 mt-4">
+              {/* Ticket Info */}
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Subject</Label>
+                  <p className="font-medium text-foreground">{selectedTicket.subject}</p>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Category</Label>
+                    <p className="text-sm">
+                      {ticketCategories[selectedTicket.category] || selectedTicket.category}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Status</Label>
+                    <div className="mt-1">{getTicketStatusBadge(selectedTicket.status)}</div>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Submitted</Label>
+                    <p className="text-sm">
+                      {new Date(selectedTicket.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground text-xs">Description</Label>
+                  <div className="mt-1 p-4 rounded-lg bg-muted/50 text-sm">
+                    {selectedTicket.description}
+                  </div>
+                </div>
+              </div>
+
+              {/* Update Status */}
+              <div className="space-y-2">
+                <Label>Update Status</Label>
+                <Select
+                  value={selectedTicket.status}
+                  onValueChange={(value) => handleUpdateTicketStatus(selectedTicket.id, value)}
+                  disabled={updatingTicket === selectedTicket.id}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border border-border z-50">
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Admin Response (for future use) */}
+              <div className="space-y-2">
+                <Label>Admin Notes (Internal)</Label>
+                <Textarea
+                  placeholder="Add internal notes about this ticket..."
+                  value={adminResponse}
+                  onChange={(e) => setAdminResponse(e.target.value)}
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground">
+                  These notes are for internal use only and won't be visible to the user.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setSelectedTicket(null)}
+                >
+                  Close
+                </Button>
+                <Button
+                  className="flex-1 gap-2"
+                  onClick={() => {
+                    toast.success("Notes saved");
+                    setSelectedTicket(null);
+                  }}
+                >
+                  <Send className="h-4 w-4" />
+                  Save Notes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Footer />
     </div>

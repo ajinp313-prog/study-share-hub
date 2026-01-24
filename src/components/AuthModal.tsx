@@ -535,13 +535,15 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                   <SelectTrigger>
                     <SelectValue placeholder="Select your study level" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background border border-border z-50">
                     <SelectItem value="10th">10th Grade / Secondary</SelectItem>
-                    <SelectItem value="12th">12th Grade / Higher Secondary</SelectItem>
-                    <SelectItem value="undergraduate">Undergraduate / Bachelor's</SelectItem>
-                    <SelectItem value="postgraduate">Postgraduate / Master's</SelectItem>
-                    <SelectItem value="engineering">Engineering</SelectItem>
-                    <SelectItem value="professional">Professional Courses</SelectItem>
+                    <SelectItem value="+1">+1 / 11th Grade</SelectItem>
+                    <SelectItem value="+2">+2 / 12th Grade</SelectItem>
+                    <SelectItem value="Undergraduate">Undergraduate / Bachelor's</SelectItem>
+                    <SelectItem value="Graduate">Graduate</SelectItem>
+                    <SelectItem value="Masters">Postgraduate / Master's</SelectItem>
+                    <SelectItem value="Engineering">Engineering</SelectItem>
+                    <SelectItem value="PhD">PhD / Doctoral</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.studyLevel && <p className="text-sm text-destructive">{errors.studyLevel}</p>}

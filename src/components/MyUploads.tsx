@@ -196,13 +196,14 @@ const MyUploads = () => {
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mt-3 md:mt-0">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleView(paper.file_path)}
+                  className="flex-1 md:flex-none text-xs sm:text-sm h-8 sm:h-9"
                 >
-                  <Eye className="h-4 w-4 mr-1" />
+                  <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                   View
                 </Button>
                 
@@ -211,28 +212,28 @@ const MyUploads = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-destructive hover:text-destructive"
+                      className="text-destructive hover:text-destructive h-8 sm:h-9 px-2 sm:px-3"
                       disabled={deleting === paper.id}
                     >
                       {deleting === paper.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                       ) : (
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                       )}
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent className="max-w-[90vw] sm:max-w-lg">
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete Paper</AlertDialogTitle>
                       <AlertDialogDescription>
                         Are you sure you want to delete "{paper.title}"? This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                      <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => handleDelete(paper.id, paper.file_path)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
                       >
                         Delete
                       </AlertDialogAction>

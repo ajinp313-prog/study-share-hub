@@ -37,12 +37,14 @@ const subjects = [
 ];
 
 const levels = [
-  "10th Grade",
-  "11th Grade",
-  "12th Grade",
-  "Undergraduate",
-  "Postgraduate",
-  "Professional",
+  { value: "10th", label: "10th Grade / Secondary" },
+  { value: "+1", label: "+1 / 11th Grade" },
+  { value: "+2", label: "+2 / 12th Grade" },
+  { value: "Undergraduate", label: "Undergraduate / Bachelor's" },
+  { value: "Graduate", label: "Graduate" },
+  { value: "Masters", label: "Postgraduate / Master's" },
+  { value: "Engineering", label: "Engineering" },
+  { value: "PhD", label: "PhD / Doctoral" },
 ];
 
 const POINTS_PER_UPLOAD = 50;
@@ -236,7 +238,7 @@ export const PaperUpload = () => {
                 <SelectTrigger>
                   <SelectValue placeholder="Select subject" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background border border-border z-50">
                   {subjects.map((subject) => (
                     <SelectItem key={subject} value={subject}>
                       {subject}
@@ -258,10 +260,10 @@ export const PaperUpload = () => {
                 <SelectTrigger>
                   <SelectValue placeholder="Select level" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background border border-border z-50">
                   {levels.map((level) => (
-                    <SelectItem key={level} value={level}>
-                      {level}
+                    <SelectItem key={level.value} value={level.value}>
+                      {level.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

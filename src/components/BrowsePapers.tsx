@@ -157,35 +157,37 @@ const BrowsePapers = () => {
         </div>
 
         {/* Filter Options */}
-        <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 mb-8 px-2 sm:px-0">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center sm:justify-start">
             <Filter className="h-4 w-4" />
             <span>Filters:</span>
           </div>
 
-          {/* Level Filter */}
-          <Select value={levelFilter} onValueChange={setLevelFilter}>
-            <SelectTrigger className="w-[180px] bg-background">
-              <SelectValue placeholder="Select Level" />
-            </SelectTrigger>
-            <SelectContent className="bg-background border border-border z-50">
-              <SelectItem value="all">All Levels</SelectItem>
-              {studyLevels.map(level => (
-                <SelectItem key={level} value={level}>
-                  {level}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-3 w-full sm:w-auto">
+            {/* Level Filter */}
+            <Select value={levelFilter} onValueChange={setLevelFilter}>
+              <SelectTrigger className="w-full sm:w-[160px] bg-background text-sm">
+                <SelectValue placeholder="Level" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border border-border z-50">
+                <SelectItem value="all">All Levels</SelectItem>
+                {studyLevels.map(level => (
+                  <SelectItem key={level} value={level}>
+                    {level}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {/* Year Filter - Text Input */}
-          <Input
-            type="text"
-            placeholder="Enter Year (e.g., 2024)"
-            className="w-[180px] bg-background"
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
-          />
+            {/* Year Filter - Text Input */}
+            <Input
+              type="text"
+              placeholder="Year"
+              className="w-full sm:w-[120px] bg-background text-sm"
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+            />
+          </div>
 
           {/* Clear Filters */}
           {hasActiveFilters && (
@@ -193,10 +195,10 @@ const BrowsePapers = () => {
               variant="ghost" 
               size="sm" 
               onClick={clearFilters}
-              className="gap-1 text-muted-foreground hover:text-foreground"
+              className="gap-1 text-muted-foreground hover:text-foreground w-full sm:w-auto"
             >
               <X className="h-4 w-4" />
-              Clear
+              Clear All
             </Button>
           )}
         </div>
@@ -220,26 +222,26 @@ const BrowsePapers = () => {
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
             {filteredPapers.map((paper) => (
               <Card
                 key={paper.id}
                 className="hover:shadow-md transition-all border-border group"
               >
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors text-sm sm:text-base line-clamp-2">
                         {paper.title}
                       </h4>
                       {paper.university && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                          <Building2 className="h-4 w-4" />
-                          {paper.university}
-                          {paper.year && <span>• {paper.year}</span>}
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
+                          <Building2 className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                          <span className="truncate">{paper.university}</span>
+                          {paper.year && <span className="flex-shrink-0">• {paper.year}</span>}
                         </div>
                       )}
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                         <Badge variant="secondary" className="text-xs">
                           {paper.subject}
                         </Badge>
@@ -249,32 +251,32 @@ const BrowsePapers = () => {
                         </Badge>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-row sm:flex-col gap-2 mt-2 sm:mt-0">
                       <Button 
                         size="sm" 
                         variant="outline" 
-                        className="gap-1"
+                        className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
                         onClick={() => handleView(paper.file_path)}
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                         View
                       </Button>
                       <Button 
                         size="sm" 
-                        className="gap-1"
+                        className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
                         onClick={() => handleDownload(paper)}
                         disabled={downloading === paper.id}
                       >
                         {downloading === paper.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                         ) : (
-                          <Download className="h-4 w-4" />
+                          <Download className="h-3 w-3 sm:h-4 sm:w-4" />
                         )}
                         Download
                       </Button>
                     </div>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-border flex items-center text-xs text-muted-foreground">
+                  <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-border flex items-center text-xs text-muted-foreground">
                     <Download className="h-3 w-3 mr-1" />
                     {paper.downloads} downloads
                   </div>

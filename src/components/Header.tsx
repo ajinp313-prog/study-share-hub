@@ -73,6 +73,19 @@ const Header = () => {
             >
               Browse Papers
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (user) {
+                  navigate("/notes");
+                } else {
+                  openSignIn();
+                }
+              }}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Browse Notes
+            </button>
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
@@ -151,6 +164,20 @@ const Header = () => {
                 className="text-left text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
               >
                 Browse Papers
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (user) {
+                    navigate("/notes");
+                    setIsMenuOpen(false);
+                  } else {
+                    openSignIn();
+                  }
+                }}
+                className="text-left text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+              >
+                Browse Notes
               </button>
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
                 {user ? (

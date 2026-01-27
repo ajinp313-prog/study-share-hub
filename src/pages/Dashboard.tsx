@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperUpload } from "@/components/PaperUpload";
+import { NoteUpload } from "@/components/NoteUpload";
 import RewardsComingSoon from "@/components/RewardsComingSoon";
 import ProfileEditModal from "@/components/ProfileEditModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +19,8 @@ import {
   Clock,
   Download,
   Upload,
-  HelpCircle
+  HelpCircle,
+  StickyNote
 } from "lucide-react";
 
 interface Profile {
@@ -137,7 +139,7 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -175,6 +177,46 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <PaperUpload />
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-purple-500/10">
+                  <StickyNote className="h-6 w-6 text-purple-500" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Browse Notes</CardTitle>
+                  <CardDescription>Find subject notes</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => navigate("/notes")}
+              >
+                Browse Notes
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-teal-500/10">
+                  <Upload className="h-6 w-6 text-teal-500" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Upload Note</CardTitle>
+                  <CardDescription>Share & earn 50 points</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <NoteUpload />
             </CardContent>
           </Card>
 

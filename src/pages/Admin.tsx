@@ -25,6 +25,7 @@ import {
   MessageSquare,
   AlertCircle,
   Send,
+  StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -52,6 +53,19 @@ interface SupportTicket {
   updated_at: string;
 }
 
+interface Note {
+  id: string;
+  title: string;
+  subject: string;
+  level: string;
+  chapter_topic: string | null;
+  university: string | null;
+  status: string;
+  created_at: string;
+  file_path: string;
+  user_id: string;
+}
+
 const ticketCategories: Record<string, string> = {
   account: "Account Issues",
   upload: "Paper Upload Problems",
@@ -68,10 +82,13 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
   const [papers, setPapers] = useState<Paper[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingNotes, setLoadingNotes] = useState(true);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [updatingNote, setUpdatingNote] = useState<string | null>(null);
   const [updatingTicket, setUpdatingTicket] = useState<string | null>(null);
   
   // Ticket detail modal
@@ -108,6 +125,7 @@ const Admin = () => {
 
     if (data === true) {
       fetchPapers();
+      fetchNotes();
       fetchTickets();
     }
   };
@@ -126,6 +144,22 @@ const Admin = () => {
       setPapers(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchNotes = async () => {
+    setLoadingNotes(true);
+    const { data, error } = await supabase
+      .from("notes")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching notes:", error);
+      toast.error("Failed to load notes");
+    } else {
+      setNotes(data || []);
+    }
+    setLoadingNotes(false);
   };
 
   const fetchTickets = async () => {
@@ -166,6 +200,30 @@ const Admin = () => {
     }
 
     setUpdating(null);
+  };
+
+  const handleUpdateNoteStatus = async (noteId: string, newStatus: string) => {
+    setUpdatingNote(noteId);
+
+    const { error } = await supabase
+      .from("notes")
+      .update({ status: newStatus })
+      .eq("id", noteId);
+
+    if (error) {
+      console.error("Error updating note status:", error);
+      toast.error("Failed to update note status");
+    } else {
+      toast.success(`Note ${newStatus === "approved" ? "approved" : "rejected"}`);
+      setNotes(notes.map((n) => (n.id === noteId ? { ...n, status: newStatus } : n)));
+    }
+
+    setUpdatingNote(null);
+  };
+
+  const handleViewNote = (filePath: string) => {
+    const { data } = supabase.storage.from("notes").getPublicUrl(filePath);
+    window.open(data.publicUrl, "_blank");
   };
 
   const handleUpdateTicketStatus = async (ticketId: string, newStatus: string) => {
@@ -244,6 +302,10 @@ const Admin = () => {
   const pendingPapers = papers.filter((p) => p.status === "pending");
   const approvedPapers = papers.filter((p) => p.status === "approved");
   const rejectedPapers = papers.filter((p) => p.status === "rejected");
+
+  const pendingNotes = notes.filter((n) => n.status === "pending");
+  const approvedNotes = notes.filter((n) => n.status === "approved");
+  const rejectedNotes = notes.filter((n) => n.status === "rejected");
 
   const openTickets = tickets.filter((t) => t.status === "open");
   const inProgressTickets = tickets.filter((t) => t.status === "in_progress");
@@ -398,6 +460,130 @@ const Admin = () => {
     );
   };
 
+  const renderNoteList = (noteList: Note[]) => {
+    if (loadingNotes) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    if (noteList.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <StickyNote className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
+          <p className="text-muted-foreground">No notes in this category.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {noteList.map((note) => (
+          <Card key={note.id} className="hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-purple-500/10">
+                      <StickyNote className="h-5 w-5 text-purple-500" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-foreground">{note.title}</h4>
+                      <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-muted-foreground">
+                        <span>{note.subject}</span>
+                        <span>•</span>
+                        <span>{note.level}</span>
+                        {note.chapter_topic && (
+                          <>
+                            <span>•</span>
+                            <span>{note.chapter_topic}</span>
+                          </>
+                        )}
+                        {note.university && (
+                          <>
+                            <span>•</span>
+                            <Building2 className="h-3 w-3" />
+                            <span>{note.university}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-2">
+                        {getStatusBadge(note.status)}
+                        <span className="text-xs text-muted-foreground">
+                          Submitted: {new Date(note.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleViewNote(note.file_path)}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    View
+                  </Button>
+
+                  {note.status === "pending" && (
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() => handleUpdateNoteStatus(note.id, "approved")}
+                        disabled={updatingNote === note.id}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {updatingNote === note.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                        )}
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleUpdateNoteStatus(note.id, "rejected")}
+                        disabled={updatingNote === note.id}
+                      >
+                        {updatingNote === note.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <XCircle className="h-4 w-4 mr-1" />
+                        )}
+                        Reject
+                      </Button>
+                    </>
+                  )}
+
+                  {note.status !== "pending" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleUpdateNoteStatus(note.id, "pending")}
+                      disabled={updatingNote === note.id}
+                    >
+                      {updatingNote === note.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Clock className="h-4 w-4 mr-1" />
+                      )}
+                      Reset to Pending
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
   const renderTicketList = (ticketList: SupportTicket[]) => {
     if (loadingTickets) {
       return (
@@ -493,12 +679,12 @@ const Admin = () => {
             <h1 className="text-3xl font-bold text-foreground">Admin Panel</h1>
           </div>
           <p className="text-muted-foreground">
-            Manage paper submissions and support tickets
+            Manage papers, notes, and support tickets
           </p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -514,7 +700,7 @@ const Admin = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Approved
+                Approved Papers
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -526,12 +712,24 @@ const Admin = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Rejected
+                Pending Notes
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {rejectedPapers.length}
+              <div className="text-2xl font-bold text-purple-600">
+                {pendingNotes.length}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Approved Notes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-teal-600">
+                {approvedNotes.length}
               </div>
             </CardContent>
           </Card>
@@ -580,9 +778,13 @@ const Admin = () => {
               <FileText className="h-4 w-4" />
               Papers ({papers.length})
             </TabsTrigger>
+            <TabsTrigger value="notes" className="gap-2">
+              <StickyNote className="h-4 w-4" />
+              Notes ({notes.length})
+            </TabsTrigger>
             <TabsTrigger value="tickets" className="gap-2">
               <Ticket className="h-4 w-4" />
-              Support Tickets ({tickets.length})
+              Tickets ({tickets.length})
             </TabsTrigger>
           </TabsList>
 
@@ -614,6 +816,40 @@ const Admin = () => {
                   </TabsContent>
                   <TabsContent value="rejected">
                     {renderPaperList(rejectedPapers)}
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Notes Tab */}
+          <TabsContent value="notes">
+            <Card>
+              <CardContent className="p-6">
+                <Tabs defaultValue="pending">
+                  <TabsList className="mb-6">
+                    <TabsTrigger value="pending" className="gap-2">
+                      <Clock className="h-4 w-4" />
+                      Pending ({pendingNotes.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="approved" className="gap-2">
+                      <CheckCircle className="h-4 w-4" />
+                      Approved ({approvedNotes.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="rejected" className="gap-2">
+                      <XCircle className="h-4 w-4" />
+                      Rejected ({rejectedNotes.length})
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="pending">
+                    {renderNoteList(pendingNotes)}
+                  </TabsContent>
+                  <TabsContent value="approved">
+                    {renderNoteList(approvedNotes)}
+                  </TabsContent>
+                  <TabsContent value="rejected">
+                    {renderNoteList(rejectedNotes)}
                   </TabsContent>
                 </Tabs>
               </CardContent>

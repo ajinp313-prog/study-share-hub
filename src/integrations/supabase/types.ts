@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      notes: {
+        Row: {
+          chapter_topic: string | null
+          created_at: string
+          description: string | null
+          downloads: number
+          file_path: string
+          file_size: number
+          id: string
+          level: string
+          status: string
+          subject: string
+          title: string
+          university: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chapter_topic?: string | null
+          created_at?: string
+          description?: string | null
+          downloads?: number
+          file_path: string
+          file_size: number
+          id?: string
+          level: string
+          status?: string
+          subject: string
+          title: string
+          university?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chapter_topic?: string | null
+          created_at?: string
+          description?: string | null
+          downloads?: number
+          file_path?: string
+          file_size?: number
+          id?: string
+          level?: string
+          status?: string
+          subject?: string
+          title?: string
+          university?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       papers: {
         Row: {
           created_at: string
@@ -205,6 +256,10 @@ export type Database = {
       }
       increment_download_count: {
         Args: { paper_id: string }
+        Returns: undefined
+      }
+      increment_note_download_count: {
+        Args: { note_id: string }
         Returns: undefined
       }
     }

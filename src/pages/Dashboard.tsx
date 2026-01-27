@@ -233,7 +233,7 @@ const Dashboard = () => {
                       Coming Soon
                     </span>
                   </CardTitle>
-                  <CardDescription>Redeem your earned points</CardDescription>
+                  <CardDescription>Redeem your<br />earned points</CardDescription>
                 </div>
               </div>
             </CardHeader>

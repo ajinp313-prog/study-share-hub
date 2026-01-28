@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaperUpload } from "@/components/PaperUpload";
 import { NoteUpload } from "@/components/NoteUpload";
+import { FeedbackForm } from "@/components/FeedbackForm";
 import RewardsComingSoon from "@/components/RewardsComingSoon";
 import ProfileEditModal from "@/components/ProfileEditModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +21,8 @@ import {
   Download,
   Upload,
   HelpCircle,
-  StickyNote
+  StickyNote,
+  MessageSquarePlus
 } from "lucide-react";
 
 interface Profile {
@@ -241,6 +243,24 @@ const Dashboard = () => {
               <Button variant="outline" className="w-full" onClick={() => navigate("/rewards")}>
                 View Rewards
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Feedback Card */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-pink-500/10">
+                  <MessageSquarePlus className="h-6 w-6 text-pink-500" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Feedback</CardTitle>
+                  <CardDescription>Share ideas & suggestions</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <FeedbackForm />
             </CardContent>
           </Card>
 

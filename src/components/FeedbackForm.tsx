@@ -97,9 +97,9 @@ export const FeedbackForm = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full bg-primary hover:bg-primary/90">
-          <MessageSquarePlus className="mr-2 h-4 w-4" />
-          Share Feedback
+        <Button className="w-full bg-primary hover:bg-primary/90 flex items-center justify-center gap-2">
+          <MessageSquarePlus className="h-4 w-4 flex-shrink-0" />
+          <span>Share Feedback</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">

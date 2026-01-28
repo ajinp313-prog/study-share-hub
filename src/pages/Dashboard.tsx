@@ -229,11 +229,11 @@ const Dashboard = () => {
                 <div>
                   <CardTitle className="text-lg flex items-center gap-2">
                     Rewards
-                    <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-accent/10 text-accent">
-                      Coming Soon
-                    </span>
                   </CardTitle>
                   <CardDescription>Redeem your<br />earned points</CardDescription>
+                  <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-accent/10 text-accent mt-2 inline-block">
+                    Coming Soon
+                  </span>
                 </div>
               </div>
             </CardHeader>

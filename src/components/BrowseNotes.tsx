@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,24 +37,128 @@ interface Note {
   file_path: string;
 }
 
-const subjects = [
-  "All Subjects",
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "Computer Science",
-  "English",
-  "History",
-  "Geography",
-  "Economics",
-  "Business Studies",
-  "Psychology",
-  "Law",
-  "Medicine",
-  "Engineering",
-  "Other",
-];
+// Subjects mapped by academic level
+const subjectsByLevel: Record<string, string[]> = {
+  "10th": [
+    "Mathematics",
+    "Science",
+    "Social Science",
+    "English",
+    "Hindi",
+    "Computer Science",
+    "Other",
+  ],
+  "+1": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "Accountancy",
+    "Business Studies",
+    "Economics",
+    "English",
+    "History",
+    "Geography",
+    "Political Science",
+    "Other",
+  ],
+  "+2": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "Accountancy",
+    "Business Studies",
+    "Economics",
+    "English",
+    "History",
+    "Geography",
+    "Political Science",
+    "Other",
+  ],
+  "Undergraduate": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "Economics",
+    "Business Administration",
+    "Commerce",
+    "English Literature",
+    "History",
+    "Psychology",
+    "Sociology",
+    "Political Science",
+    "Law",
+    "Other",
+  ],
+  "Graduate": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "Economics",
+    "Business Administration",
+    "Commerce",
+    "English Literature",
+    "History",
+    "Psychology",
+    "Sociology",
+    "Political Science",
+    "Law",
+    "Other",
+  ],
+  "Masters": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "Economics",
+    "Business Administration (MBA)",
+    "Commerce",
+    "English Literature",
+    "History",
+    "Psychology",
+    "Sociology",
+    "Political Science",
+    "Law",
+    "Medicine",
+    "Other",
+  ],
+  "Engineering": [
+    "Computer Science Engineering",
+    "Electronics & Communication",
+    "Electrical Engineering",
+    "Mechanical Engineering",
+    "Civil Engineering",
+    "Chemical Engineering",
+    "Information Technology",
+    "Aerospace Engineering",
+    "Biotechnology",
+    "Data Science",
+    "Artificial Intelligence",
+    "Other",
+  ],
+  "PhD": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "Economics",
+    "Engineering",
+    "Medicine",
+    "Psychology",
+    "Philosophy",
+    "Literature",
+    "Other",
+  ],
+};
 
 const levels = [
   { value: "all", label: "All Levels" },
@@ -76,6 +180,26 @@ const BrowseNotes = () => {
   const [subjectFilter, setSubjectFilter] = useState("All Subjects");
   const [levelFilter, setLevelFilter] = useState("all");
   const [downloading, setDownloading] = useState<string | null>(null);
+
+  // Get subjects based on selected level
+  const availableSubjects = useMemo(() => {
+    if (levelFilter === "all") {
+      // When "All Levels" is selected, show all unique subjects across all levels
+      const allSubjects = new Set<string>();
+      Object.values(subjectsByLevel).forEach(subjects => {
+        subjects.forEach(subject => allSubjects.add(subject));
+      });
+      return ["All Subjects", ...Array.from(allSubjects).sort()];
+    }
+    return ["All Subjects", ...(subjectsByLevel[levelFilter] || [])];
+  }, [levelFilter]);
+
+  // Reset subject filter when level changes and current subject is not available
+  useEffect(() => {
+    if (subjectFilter !== "All Subjects" && !availableSubjects.includes(subjectFilter)) {
+      setSubjectFilter("All Subjects");
+    }
+  }, [levelFilter, availableSubjects, subjectFilter]);
 
   useEffect(() => {
     fetchNotes();
@@ -175,28 +299,28 @@ const BrowseNotes = () => {
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex items-center gap-2 flex-1">
             <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
-            <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+            <Select value={levelFilter} onValueChange={setLevelFilter}>
               <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Select subject" />
+                <SelectValue placeholder="Select level first" />
               </SelectTrigger>
               <SelectContent className="bg-background border border-border z-50">
-                {subjects.map((subject) => (
-                  <SelectItem key={subject} value={subject}>
-                    {subject}
+                {levels.map((level) => (
+                  <SelectItem key={level.value} value={level.value}>
+                    {level.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <Select value={levelFilter} onValueChange={setLevelFilter}>
-            <SelectTrigger className="flex-1 sm:w-[180px]">
-              <SelectValue placeholder="Select level" />
+          <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+            <SelectTrigger className="flex-1 sm:w-[200px]">
+              <SelectValue placeholder="Select subject" />
             </SelectTrigger>
             <SelectContent className="bg-background border border-border z-50">
-              {levels.map((level) => (
-                <SelectItem key={level.value} value={level.value}>
-                  {level.label}
+              {availableSubjects.map((subject) => (
+                <SelectItem key={subject} value={subject}>
+                  {subject}
                 </SelectItem>
               ))}
             </SelectContent>

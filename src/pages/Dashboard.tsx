@@ -37,6 +37,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [papersUploaded, setPapersUploaded] = useState(0);
+  const [notesUploaded, setNotesUploaded] = useState(0);
   const [daysActive, setDaysActive] = useState(1);
 
   useEffect(() => {
@@ -72,6 +73,14 @@ const Dashboard = () => {
         .eq("user_id", user.id);
       
       setPapersUploaded(papersCount || 0);
+
+      // Fetch notes count
+      const { count: notesCount } = await supabase
+        .from("notes")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      
+      setNotesUploaded(notesCount || 0);
     }
   }, [user]);
 
@@ -92,8 +101,8 @@ const Dashboard = () => {
   }
 
   const stats = [
-    { label: "Papers Downloaded", value: "0", icon: Download, color: "text-blue-500" },
     { label: "Papers Uploaded", value: String(papersUploaded), icon: Upload, color: "text-green-500" },
+    { label: "Notes Uploaded", value: String(notesUploaded), icon: StickyNote, color: "text-teal-500" },
     { label: "Points Earned", value: String(profile?.points || 0), icon: Star, color: "text-yellow-500" },
     { label: "Days Active", value: String(daysActive), icon: Clock, color: "text-purple-500" },
   ];

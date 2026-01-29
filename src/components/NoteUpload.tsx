@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,23 +23,128 @@ import {
 import { Upload, FileText, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-const subjects = [
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "Computer Science",
-  "English",
-  "History",
-  "Geography",
-  "Economics",
-  "Business Studies",
-  "Psychology",
-  "Law",
-  "Medicine",
-  "Engineering",
-  "Other",
-];
+// Subjects mapped by academic level
+const subjectsByLevel: Record<string, string[]> = {
+  "10th": [
+    "Mathematics",
+    "Science",
+    "Social Science",
+    "English",
+    "Hindi",
+    "Computer Science",
+    "Other",
+  ],
+  "+1": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "Accountancy",
+    "Business Studies",
+    "Economics",
+    "English",
+    "History",
+    "Geography",
+    "Political Science",
+    "Other",
+  ],
+  "+2": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "Accountancy",
+    "Business Studies",
+    "Economics",
+    "English",
+    "History",
+    "Geography",
+    "Political Science",
+    "Other",
+  ],
+  "Undergraduate": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "Economics",
+    "Business Administration",
+    "Commerce",
+    "English Literature",
+    "History",
+    "Psychology",
+    "Sociology",
+    "Political Science",
+    "Law",
+    "Other",
+  ],
+  "Graduate": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "Economics",
+    "Business Administration",
+    "Commerce",
+    "English Literature",
+    "History",
+    "Psychology",
+    "Sociology",
+    "Political Science",
+    "Law",
+    "Other",
+  ],
+  "Masters": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "Economics",
+    "Business Administration (MBA)",
+    "Commerce",
+    "English Literature",
+    "History",
+    "Psychology",
+    "Sociology",
+    "Political Science",
+    "Law",
+    "Medicine",
+    "Other",
+  ],
+  "Engineering": [
+    "Computer Science Engineering",
+    "Electronics & Communication",
+    "Electrical Engineering",
+    "Mechanical Engineering",
+    "Civil Engineering",
+    "Chemical Engineering",
+    "Information Technology",
+    "Aerospace Engineering",
+    "Biotechnology",
+    "Data Science",
+    "Artificial Intelligence",
+    "Other",
+  ],
+  "PhD": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "Economics",
+    "Engineering",
+    "Medicine",
+    "Psychology",
+    "Philosophy",
+    "Literature",
+    "Other",
+  ],
+};
 
 const levels = [
   { value: "10th", label: "10th Grade / Secondary" },
@@ -67,6 +172,17 @@ export const NoteUpload = () => {
     chapter_topic: "",
     university: "",
   });
+
+  // Get subjects based on selected level
+  const availableSubjects = useMemo(() => {
+    if (!formData.level) return [];
+    return subjectsByLevel[formData.level] || [];
+  }, [formData.level]);
+
+  const handleLevelChange = (value: string) => {
+    // Reset subject when level changes
+    setFormData({ ...formData, level: value, subject: "" });
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -232,21 +348,19 @@ export const NoteUpload = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Subject *</Label>
+              <Label>Level *</Label>
               <Select
-                value={formData.subject}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, subject: value })
-                }
+                value={formData.level}
+                onValueChange={handleLevelChange}
                 required
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select subject" />
+                  <SelectValue placeholder="Select level first" />
                 </SelectTrigger>
                 <SelectContent className="bg-background border border-border z-50">
-                  {subjects.map((subject) => (
-                    <SelectItem key={subject} value={subject}>
-                      {subject}
+                  {levels.map((level) => (
+                    <SelectItem key={level.value} value={level.value}>
+                      {level.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -254,21 +368,22 @@ export const NoteUpload = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Level *</Label>
+              <Label>Subject *</Label>
               <Select
-                value={formData.level}
+                value={formData.subject}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, level: value })
+                  setFormData({ ...formData, subject: value })
                 }
                 required
+                disabled={!formData.level}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select level" />
+                  <SelectValue placeholder={formData.level ? "Select subject" : "Select level first"} />
                 </SelectTrigger>
                 <SelectContent className="bg-background border border-border z-50">
-                  {levels.map((level) => (
-                    <SelectItem key={level.value} value={level.value}>
-                      {level.label}
+                  {availableSubjects.map((subject) => (
+                    <SelectItem key={subject} value={subject}>
+                      {subject}
                     </SelectItem>
                   ))}
                 </SelectContent>

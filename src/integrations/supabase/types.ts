@@ -321,6 +321,10 @@ export type Database = {
       }
     }
     Functions: {
+      award_upload_points: {
+        Args: { p_action: string; p_description: string; p_user_id: string }
+        Returns: boolean
+      }
       get_user_email_by_mobile: {
         Args: { mobile_number: string }
         Returns: {

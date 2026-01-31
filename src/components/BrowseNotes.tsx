@@ -207,10 +207,10 @@ const BrowseNotes = () => {
 
   const fetchNotes = async () => {
     setLoading(true);
+    // Use notes_public view which excludes user_id for privacy
     let query = supabase
-      .from("notes")
+      .from("notes_public")
       .select("*")
-      .eq("status", "approved")
       .order("created_at", { ascending: false });
 
     if (subjectFilter !== "All Subjects") {

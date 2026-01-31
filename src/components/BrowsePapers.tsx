@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Download, Eye, GraduationCap, Building2, Loader2, Filter, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { toast } from "sonner";
 
 interface Paper {
@@ -20,10 +22,13 @@ interface Paper {
 }
 
 const BrowsePapers = () => {
+  const { user } = useAuth();
+  const { getSignedUrl } = useSignedUrl();
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
   
   // Filter states
   const [levelFilter, setLevelFilter] = useState<string>("all");
@@ -67,15 +72,62 @@ const BrowsePapers = () => {
     return [...new Set(papers.map(p => p.year).filter(Boolean))].sort((a, b) => (b || 0) - (a || 0));
   }, [papers]);
 
-  const handleView = (filePath: string) => {
-    const { data } = supabase.storage.from("papers").getPublicUrl(filePath);
-    window.open(data.publicUrl, "_blank");
+  const handleView = async (paper: Paper) => {
+    if (!user) {
+      toast.error("Please sign in to view papers");
+      return;
+    }
+
+    setViewing(paper.id);
+    try {
+      const result = await getSignedUrl({
+        bucket: "papers",
+        filePath: paper.file_path,
+        itemId: paper.id,
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      if (result.signedUrl) {
+        window.open(result.signedUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("View error:", error);
+      toast.error("Failed to view paper");
+    } finally {
+      setViewing(null);
+    }
   };
 
   const handleDownload = async (paper: Paper) => {
+    if (!user) {
+      toast.error("Please sign in to download papers");
+      return;
+    }
+
     setDownloading(paper.id);
     
     try {
+      // Get signed URL for download
+      const result = await getSignedUrl({
+        bucket: "papers",
+        filePath: paper.file_path,
+        itemId: paper.id,
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      if (!result.signedUrl) {
+        toast.error("Failed to get download URL");
+        return;
+      }
+
       // Increment download count
       const { error: rpcError } = await supabase.rpc("increment_download_count", {
         paper_id: paper.id,
@@ -85,11 +137,8 @@ const BrowsePapers = () => {
         console.error("Error incrementing download:", rpcError);
       }
 
-      // Get the file URL and trigger download
-      const { data } = supabase.storage.from("papers").getPublicUrl(paper.file_path);
-      
-      // Create a temporary link to trigger download
-      const response = await fetch(data.publicUrl);
+      // Trigger download using signed URL
+      const response = await fetch(result.signedUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -256,9 +305,14 @@ const BrowsePapers = () => {
                         size="sm" 
                         variant="outline" 
                         className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
-                        onClick={() => handleView(paper.file_path)}
+                        onClick={() => handleView(paper)}
+                        disabled={viewing === paper.id}
                       >
-                        <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                        {viewing === paper.id ? (
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                        ) : (
+                          <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                        )}
                         View
                       </Button>
                       <Button 

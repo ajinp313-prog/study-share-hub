@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,9 +43,11 @@ interface Paper {
 
 const MyUploads = () => {
   const { user } = useAuth();
+  const { getSignedUrl } = useSignedUrl();
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -71,9 +74,29 @@ const MyUploads = () => {
     setLoading(false);
   };
 
-  const handleView = async (filePath: string) => {
-    const { data } = supabase.storage.from("papers").getPublicUrl(filePath);
-    window.open(data.publicUrl, "_blank");
+  const handleView = async (paper: Paper) => {
+    setViewing(paper.id);
+    try {
+      const result = await getSignedUrl({
+        bucket: "papers",
+        filePath: paper.file_path,
+        itemId: paper.id,
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      if (result.signedUrl) {
+        window.open(result.signedUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("View error:", error);
+      toast.error("Failed to view paper");
+    } finally {
+      setViewing(null);
+    }
   };
 
   const handleDelete = async (paperId: string, filePath: string) => {
@@ -200,11 +223,18 @@ const MyUploads = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleView(paper.file_path)}
+                  onClick={() => handleView(paper)}
+                  disabled={viewing === paper.id}
                   className="flex-1 md:flex-none text-xs sm:text-sm h-8 sm:h-9"
                 >
-                  <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  View
+                  {viewing === paper.id ? (
+                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                      View
+                    </>
+                  )}
                 </Button>
                 
                 <AlertDialog>

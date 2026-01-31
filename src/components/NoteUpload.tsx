@@ -229,29 +229,18 @@ export const NoteUpload = () => {
 
       if (insertError) throw insertError;
 
-      // Award points to user
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("points")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      const currentPoints = profile?.points || 0;
-
-      await supabase
-        .from("profiles")
-        .update({ points: currentPoints + POINTS_PER_UPLOAD })
-        .eq("user_id", user.id);
-
-      // Record points history
-      await supabase.from("points_history").insert({
-        user_id: user.id,
-        points: POINTS_PER_UPLOAD,
-        action: "note_upload",
-        description: `Uploaded note: ${formData.title}`,
+      // Award points using secure server-side function
+      const { data: pointsAwarded } = await supabase.rpc("award_upload_points", {
+        p_user_id: user.id,
+        p_action: "note_upload",
+        p_description: `Uploaded note: ${formData.title}`,
       });
 
-      toast.success(`Note uploaded! You earned ${POINTS_PER_UPLOAD} points!`);
+      if (pointsAwarded) {
+        toast.success(`Note uploaded! You earned ${POINTS_PER_UPLOAD} points!`);
+      } else {
+        toast.success("Note uploaded successfully!");
+      }
       setOpen(false);
       resetForm();
     } catch (error: any) {

@@ -80,11 +80,13 @@ const HelpSupport = () => {
   }, [user]);
 
   const fetchTickets = async () => {
+    if (!user) return;
+    
     setLoadingTickets(true);
     const { data, error } = await supabase
       .from("support_tickets")
       .select("*")
-      .eq("user_id", user?.id)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -113,11 +115,21 @@ const HelpSupport = () => {
 
     setSubmitting(true);
 
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to submit a ticket",
+        variant: "destructive",
+      });
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("support_tickets")
         .insert({
-          user_id: user?.id,
+          user_id: user.id,
           subject: formData.subject.trim(),
           category: formData.category,
           description: formData.description.trim(),

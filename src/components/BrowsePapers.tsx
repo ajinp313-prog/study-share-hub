@@ -67,10 +67,6 @@ const BrowsePapers = () => {
     setLoading(false);
   };
 
-  // Extract unique years from papers for reference
-  const availableYears = useMemo(() => {
-    return [...new Set(papers.map(p => p.year).filter(Boolean))].sort((a, b) => (b || 0) - (a || 0));
-  }, [papers]);
 
   const handleView = async (paper: Paper) => {
     if (!user) {

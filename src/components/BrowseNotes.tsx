@@ -230,7 +230,30 @@ const BrowseNotes = () => {
       console.error("Error fetching notes:", error);
       toast.error("Failed to load notes");
     } else {
-      setNotes(data || []);
+      // Filter out any notes with null required fields from the view and map to Note type
+      const validNotes: Note[] = (data || [])
+        .filter(note => 
+          note.id !== null && 
+          note.title !== null && 
+          note.subject !== null && 
+          note.level !== null &&
+          note.file_path !== null &&
+          note.downloads !== null &&
+          note.created_at !== null
+        )
+        .map(note => ({
+          id: note.id as string,
+          title: note.title as string,
+          description: note.description,
+          subject: note.subject as string,
+          level: note.level as string,
+          chapter_topic: note.chapter_topic,
+          university: note.university,
+          downloads: note.downloads as number,
+          created_at: note.created_at as string,
+          file_path: note.file_path as string,
+        }));
+      setNotes(validNotes);
     }
     setLoading(false);
   };

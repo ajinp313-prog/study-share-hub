@@ -32,26 +32,50 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
+    // Prevent race condition by tracking initialization state
+    let isMounted = true;
+
+    // Get existing session FIRST to avoid race condition
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        
+        if (isMounted) {
+          setSession(initialSession);
+          setUser(initialSession?.user ?? null);
+          setInitialized(true);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Failed to get initial session:", error);
+        if (isMounted) {
+          setInitialized(true);
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    // Set up auth state listener AFTER getting initial session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+      (_event, newSession) => {
+        // Only process auth changes after initialization to avoid race condition
+        if (isMounted && initialized) {
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
+        }
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [initialized]);
 
   const signOut = async () => {
     // Clear local state first

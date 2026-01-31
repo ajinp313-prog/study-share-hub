@@ -271,7 +271,54 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      notes_public: {
+        Row: {
+          chapter_topic: string | null
+          created_at: string | null
+          description: string | null
+          downloads: number | null
+          file_path: string | null
+          file_size: number | null
+          id: string | null
+          level: string | null
+          status: string | null
+          subject: string | null
+          title: string | null
+          university: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          chapter_topic?: string | null
+          created_at?: string | null
+          description?: string | null
+          downloads?: number | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string | null
+          level?: string | null
+          status?: string | null
+          subject?: string | null
+          title?: string | null
+          university?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          chapter_topic?: string | null
+          created_at?: string | null
+          description?: string | null
+          downloads?: number | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string | null
+          level?: string | null
+          status?: string | null
+          subject?: string | null
+          title?: string | null
+          university?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_user_email_by_mobile: {

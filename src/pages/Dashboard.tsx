@@ -18,7 +18,6 @@ import {
   TrendingUp, 
   Star,
   Clock,
-  Download,
   Upload,
   HelpCircle,
   StickyNote,

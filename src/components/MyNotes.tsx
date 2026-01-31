@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,9 +44,11 @@ interface Note {
 
 const MyNotes = () => {
   const { user } = useAuth();
+  const { getSignedUrl } = useSignedUrl();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -72,9 +75,29 @@ const MyNotes = () => {
     setLoading(false);
   };
 
-  const handleView = (filePath: string) => {
-    const { data } = supabase.storage.from("notes").getPublicUrl(filePath);
-    window.open(data.publicUrl, "_blank");
+  const handleView = async (note: Note) => {
+    setViewing(note.id);
+    try {
+      const result = await getSignedUrl({
+        bucket: "notes",
+        filePath: note.file_path,
+        itemId: note.id,
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      if (result.signedUrl) {
+        window.open(result.signedUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("View error:", error);
+      toast.error("Failed to view note");
+    } finally {
+      setViewing(null);
+    }
   };
 
   const handleDelete = async (note: Note) => {
@@ -197,10 +220,17 @@ const MyNotes = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleView(note.file_path)}
+                  onClick={() => handleView(note)}
+                  disabled={viewing === note.id}
                 >
-                  <Eye className="h-4 w-4 mr-1" />
-                  View
+                  {viewing === note.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4 mr-1" />
+                      View
+                    </>
+                  )}
                 </Button>
 
                 <AlertDialog>

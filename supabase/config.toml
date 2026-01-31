@@ -1,1 +1,4 @@
 project_id = "styrpqafgeexrhlxegkl"
+
+[functions.get-signed-url]
+verify_jwt = false

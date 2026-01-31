@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -174,12 +175,14 @@ const levels = [
 
 const BrowseNotes = () => {
   const { user } = useAuth();
+  const { getSignedUrl } = useSignedUrl();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("All Subjects");
   const [levelFilter, setLevelFilter] = useState("all");
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
 
   // Get subjects based on selected level
   const availableSubjects = useMemo(() => {
@@ -232,9 +235,34 @@ const BrowseNotes = () => {
     setLoading(false);
   };
 
-  const handleView = (filePath: string) => {
-    const { data } = supabase.storage.from("notes").getPublicUrl(filePath);
-    window.open(data.publicUrl, "_blank");
+  const handleView = async (note: Note) => {
+    if (!user) {
+      toast.error("Please sign in to view notes");
+      return;
+    }
+
+    setViewing(note.id);
+    try {
+      const result = await getSignedUrl({
+        bucket: "notes",
+        filePath: note.file_path,
+        itemId: note.id,
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      if (result.signedUrl) {
+        window.open(result.signedUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("View error:", error);
+      toast.error("Failed to view note");
+    } finally {
+      setViewing(null);
+    }
   };
 
   const handleDownload = async (note: Note) => {
@@ -246,14 +274,29 @@ const BrowseNotes = () => {
     setDownloading(note.id);
 
     try {
+      // Get signed URL for download
+      const result = await getSignedUrl({
+        bucket: "notes",
+        filePath: note.file_path,
+        itemId: note.id,
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      if (!result.signedUrl) {
+        toast.error("Failed to get download URL");
+        return;
+      }
+
       // Increment download count
       await supabase.rpc("increment_note_download_count", { note_id: note.id });
 
-      // Get the file URL and trigger download
-      const { data } = supabase.storage.from("notes").getPublicUrl(note.file_path);
-      
+      // Trigger download
       const link = document.createElement("a");
-      link.href = data.publicUrl;
+      link.href = result.signedUrl;
       link.download = note.title + ".pdf";
       link.target = "_blank";
       document.body.appendChild(link);
@@ -391,10 +434,17 @@ const BrowseNotes = () => {
                     variant="outline"
                     size="sm"
                     className="flex-1"
-                    onClick={() => handleView(note.file_path)}
+                    onClick={() => handleView(note)}
+                    disabled={viewing === note.id}
                   >
-                    <Eye className="h-4 w-4 mr-1" />
-                    View
+                    {viewing === note.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </>
+                    )}
                   </Button>
                   <Button
                     size="sm"

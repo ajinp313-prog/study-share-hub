@@ -10,6 +10,7 @@ import { NoteUpload } from "@/components/NoteUpload";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import RewardsComingSoon from "@/components/RewardsComingSoon";
 import ProfileEditModal from "@/components/ProfileEditModal";
+import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   BookOpen, 
@@ -26,6 +27,7 @@ import {
 
 interface Profile {
   name: string;
+  mobile: string;
   study_level: string | null;
   subjects_of_interest: string[] | null;
   points: number;
@@ -38,6 +40,8 @@ const Dashboard = () => {
   const [papersUploaded, setPapersUploaded] = useState(0);
   const [notesUploaded, setNotesUploaded] = useState(0);
   const [daysActive, setDaysActive] = useState(1);
+  const [showProfileCompletion, setShowProfileCompletion] = useState(false);
+  const [profileChecked, setProfileChecked] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -50,12 +54,20 @@ const Dashboard = () => {
       // Fetch profile
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("name, study_level, subjects_of_interest, points, created_at")
+        .select("name, mobile, study_level, subjects_of_interest, points, created_at")
         .eq("user_id", user.id)
         .maybeSingle();
       
       if (profileData) {
         setProfile(profileData);
+        
+        // Check if profile needs completion (Google sign-in users)
+        if (!profileChecked) {
+          if (!profileData.mobile || !profileData.study_level) {
+            setShowProfileCompletion(true);
+          }
+          setProfileChecked(true);
+        }
         
         // Calculate days active
         const createdDate = new Date(profileData.created_at);
@@ -345,6 +357,13 @@ const Dashboard = () => {
         </div>
       </main>
       <Footer />
+
+      {/* Profile Completion Modal for Google Sign-In users */}
+      <ProfileCompletionModal
+        open={showProfileCompletion}
+        onOpenChange={setShowProfileCompletion}
+        onComplete={fetchUserData}
+      />
     </div>
   );
 };

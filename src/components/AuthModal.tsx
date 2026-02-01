@@ -105,6 +105,9 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
+          // Reset Google loading state when sign-in completes
+          setIsGoogleLoading(false);
+          
           // Check if this is a new Google sign-in user that needs profile completion
           setTimeout(async () => {
             await checkProfileCompletion();
@@ -371,7 +374,8 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
     }
   };
 
-  const GoogleIcon = () => (
+  // Google Icon as inline SVG to avoid ref issues
+  const googleIconSvg = (
     <svg className="h-5 w-5" viewBox="0 0 24 24">
       <path
         fill="currentColor"
@@ -475,7 +479,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                   {isGoogleLoading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    <GoogleIcon />
+                    googleIconSvg
                   )}
                   Continue with Google
                 </Button>
@@ -589,7 +593,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                   {isGoogleLoading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    <GoogleIcon />
+                    googleIconSvg
                   )}
                   Sign up with Google
                 </Button>

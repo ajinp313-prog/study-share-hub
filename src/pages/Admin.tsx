@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useSignedUrl } from "@/hooks/useSignedUrl";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -94,6 +95,11 @@ const Admin = () => {
   // Ticket detail modal
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [adminResponse, setAdminResponse] = useState("");
+  
+  // Signed URL hook for viewing files
+  const { getSignedUrl } = useSignedUrl();
+  const [viewingPaper, setViewingPaper] = useState<string | null>(null);
+  const [viewingNote, setViewingNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -178,9 +184,29 @@ const Admin = () => {
     setLoadingTickets(false);
   };
 
-  const handleView = (filePath: string) => {
-    const { data } = supabase.storage.from("papers").getPublicUrl(filePath);
-    window.open(data.publicUrl, "_blank");
+  const handleView = async (paperId: string, filePath: string) => {
+    setViewingPaper(paperId);
+    try {
+      const result = await getSignedUrl({
+        bucket: "papers",
+        filePath: filePath,
+        itemId: paperId,
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      if (result.signedUrl) {
+        window.open(result.signedUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("View error:", error);
+      toast.error("Failed to view paper");
+    } finally {
+      setViewingPaper(null);
+    }
   };
 
   const handleUpdateStatus = async (paperId: string, newStatus: string) => {
@@ -221,9 +247,29 @@ const Admin = () => {
     setUpdatingNote(null);
   };
 
-  const handleViewNote = (filePath: string) => {
-    const { data } = supabase.storage.from("notes").getPublicUrl(filePath);
-    window.open(data.publicUrl, "_blank");
+  const handleViewNote = async (noteId: string, filePath: string) => {
+    setViewingNote(noteId);
+    try {
+      const result = await getSignedUrl({
+        bucket: "notes",
+        filePath: filePath,
+        itemId: noteId,
+      });
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      if (result.signedUrl) {
+        window.open(result.signedUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("View error:", error);
+      toast.error("Failed to view note");
+    } finally {
+      setViewingNote(null);
+    }
   };
 
   const handleUpdateTicketStatus = async (ticketId: string, newStatus: string) => {
@@ -399,9 +445,14 @@ const Admin = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleView(paper.file_path)}
+                    onClick={() => handleView(paper.id, paper.file_path)}
+                    disabled={viewingPaper === paper.id}
                   >
-                    <Eye className="h-4 w-4 mr-1" />
+                    {viewingPaper === paper.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <Eye className="h-4 w-4 mr-1" />
+                    )}
                     View
                   </Button>
 
@@ -523,9 +574,14 @@ const Admin = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleViewNote(note.file_path)}
+                    onClick={() => handleViewNote(note.id, note.file_path)}
+                    disabled={viewingNote === note.id}
                   >
-                    <Eye className="h-4 w-4 mr-1" />
+                    {viewingNote === note.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <Eye className="h-4 w-4 mr-1" />
+                    )}
                     View
                   </Button>
 

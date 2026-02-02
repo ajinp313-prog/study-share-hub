@@ -84,11 +84,20 @@ const BrowsePapers = () => {
 
       if (result.error) {
         toast.error(result.error);
+        setViewing(null);
         return;
       }
 
       if (result.signedUrl) {
-        window.open(result.signedUrl, "_blank");
+        // Use window.location.assign for more reliable navigation
+        // or create a temporary link and click it
+        const link = document.createElement("a");
+        link.href = result.signedUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     } catch (error) {
       console.error("View error:", error);

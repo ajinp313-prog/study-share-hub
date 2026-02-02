@@ -274,11 +274,19 @@ const BrowseNotes = () => {
 
       if (result.error) {
         toast.error(result.error);
+        setViewing(null);
         return;
       }
 
       if (result.signedUrl) {
-        window.open(result.signedUrl, "_blank");
+        // Use a temporary link element for more reliable navigation
+        const link = document.createElement("a");
+        link.href = result.signedUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     } catch (error) {
       console.error("View error:", error);

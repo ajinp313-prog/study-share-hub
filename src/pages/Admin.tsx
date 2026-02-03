@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import PDFPreviewModal from "@/components/PDFPreviewModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +30,6 @@ import {
   StickyNote,
 } from "lucide-react";
 import { toast } from "sonner";
-import { openSignedFileInNewTab } from "@/lib/signedFile";
 
 interface Paper {
   id: string;
@@ -101,6 +101,11 @@ const Admin = () => {
   const { getSignedUrl } = useSignedUrl();
   const [viewingPaper, setViewingPaper] = useState<string | null>(null);
   const [viewingNote, setViewingNote] = useState<string | null>(null);
+
+  // PDF Preview Modal state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -185,7 +190,7 @@ const Admin = () => {
     setLoadingTickets(false);
   };
 
-  const handleView = async (paperId: string, filePath: string) => {
+  const handleView = async (paperId: string, filePath: string, title?: string) => {
     setViewingPaper(paperId);
     try {
       const result = await getSignedUrl({
@@ -201,7 +206,9 @@ const Admin = () => {
       }
 
       if (result.signedUrl) {
-        await openSignedFileInNewTab(result.signedUrl, { title: "Paper" });
+        setPreviewUrl(result.signedUrl);
+        setPreviewTitle(title || "Paper");
+        setPreviewOpen(true);
       }
     } catch (error) {
       console.error("View error:", error);
@@ -249,7 +256,7 @@ const Admin = () => {
     setUpdatingNote(null);
   };
 
-  const handleViewNote = async (noteId: string, filePath: string) => {
+  const handleViewNote = async (noteId: string, filePath: string, title?: string) => {
     setViewingNote(noteId);
     try {
       const result = await getSignedUrl({
@@ -265,7 +272,9 @@ const Admin = () => {
       }
 
       if (result.signedUrl) {
-        await openSignedFileInNewTab(result.signedUrl, { title: "Note" });
+        setPreviewUrl(result.signedUrl);
+        setPreviewTitle(title || "Note");
+        setPreviewOpen(true);
       }
     } catch (error) {
       console.error("View error:", error);
@@ -448,7 +457,7 @@ const Admin = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleView(paper.id, paper.file_path)}
+                    onClick={() => handleView(paper.id, paper.file_path, paper.title)}
                     disabled={viewingPaper === paper.id}
                   >
                     {viewingPaper === paper.id ? (
@@ -577,7 +586,7 @@ const Admin = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleViewNote(note.id, note.file_path)}
+                    onClick={() => handleViewNote(note.id, note.file_path, note.title)}
                     disabled={viewingNote === note.id}
                   >
                     {viewingNote === note.id ? (
@@ -1056,6 +1065,14 @@ const Admin = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* PDF Preview Modal */}
+      <PDFPreviewModal
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        signedUrl={previewUrl}
+        title={previewTitle}
+      />
 
       <Footer />
     </div>

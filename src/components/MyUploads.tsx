@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
+import { openSignedFileInNewTab } from "@/lib/signedFile";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -90,14 +91,7 @@ const MyUploads = () => {
       }
 
       if (result.signedUrl) {
-        // Use programmatic link click to avoid popup blocker
-        const link = document.createElement("a");
-        link.href = result.signedUrl;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        await openSignedFileInNewTab(result.signedUrl, { title: paper.title });
       }
     } catch (error) {
       console.error("View error:", error);

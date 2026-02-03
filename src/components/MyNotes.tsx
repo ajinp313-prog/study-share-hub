@@ -28,7 +28,7 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { toast } from "sonner";
-import { openSignedFileInNewTab } from "@/lib/signedFile";
+import PDFPreviewModal from "@/components/PDFPreviewModal";
 
 interface Note {
   id: string;
@@ -50,6 +50,11 @@ const MyNotes = () => {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
+
+  // PDF Preview Modal state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -92,7 +97,9 @@ const MyNotes = () => {
       }
 
       if (result.signedUrl) {
-        await openSignedFileInNewTab(result.signedUrl, { title: note.title });
+        setPreviewUrl(result.signedUrl);
+        setPreviewTitle(note.title);
+        setPreviewOpen(true);
       }
     } catch (error) {
       console.error("View error:", error);
@@ -273,6 +280,14 @@ const MyNotes = () => {
           </CardContent>
         </Card>
       ))}
+
+      {/* PDF Preview Modal */}
+      <PDFPreviewModal
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        signedUrl={previewUrl}
+        title={previewTitle}
+      />
     </div>
   );
 };

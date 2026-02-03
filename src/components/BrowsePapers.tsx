@@ -8,7 +8,7 @@ import { Search, Download, Eye, GraduationCap, Building2, Loader2, Filter, X } f
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
-import { openSignedFileInNewTab } from "@/lib/signedFile";
+import PDFPreviewModal from "@/components/PDFPreviewModal";
 import { toast } from "sonner";
 
 interface Paper {
@@ -30,6 +30,12 @@ const BrowsePapers = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [downloading, setDownloading] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
+  
+  // PDF Preview Modal state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState("");
+  const [previewPaper, setPreviewPaper] = useState<Paper | null>(null);
   
   // Filter states
   const [levelFilter, setLevelFilter] = useState<string>("all");
@@ -90,13 +96,22 @@ const BrowsePapers = () => {
       }
 
       if (result.signedUrl) {
-        await openSignedFileInNewTab(result.signedUrl, { title: paper.title });
+        setPreviewUrl(result.signedUrl);
+        setPreviewTitle(paper.title);
+        setPreviewPaper(paper);
+        setPreviewOpen(true);
       }
     } catch (error) {
       console.error("View error:", error);
       toast.error("Failed to view paper");
     } finally {
       setViewing(null);
+    }
+  };
+
+  const handlePreviewDownload = () => {
+    if (previewPaper) {
+      handleDownload(previewPaper);
     }
   };
 
@@ -337,6 +352,15 @@ const BrowsePapers = () => {
             ))}
           </div>
         )}
+
+        {/* PDF Preview Modal */}
+        <PDFPreviewModal
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          signedUrl={previewUrl}
+          title={previewTitle}
+          onDownload={handlePreviewDownload}
+        />
       </div>
     </section>
   );

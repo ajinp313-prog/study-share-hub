@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
-import { openSignedFileInNewTab } from "@/lib/signedFile";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +16,7 @@ import {
   Loader2
 } from "lucide-react";
 import { toast } from "sonner";
+import PDFPreviewModal from "@/components/PDFPreviewModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +49,11 @@ const MyUploads = () => {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
+
+  // PDF Preview Modal state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -91,7 +96,9 @@ const MyUploads = () => {
       }
 
       if (result.signedUrl) {
-        await openSignedFileInNewTab(result.signedUrl, { title: paper.title });
+        setPreviewUrl(result.signedUrl);
+        setPreviewTitle(paper.title);
+        setPreviewOpen(true);
       }
     } catch (error) {
       console.error("View error:", error);
@@ -277,6 +284,14 @@ const MyUploads = () => {
           </CardContent>
         </Card>
       ))}
+
+      {/* PDF Preview Modal */}
+      <PDFPreviewModal
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        signedUrl={previewUrl}
+        title={previewTitle}
+      />
     </div>
   );
 };

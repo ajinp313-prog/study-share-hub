@@ -24,7 +24,8 @@ import {
   Filter,
 } from "lucide-react";
 import { toast } from "sonner";
-import { downloadSignedFile, openSignedFileInNewTab } from "@/lib/signedFile";
+import { downloadSignedFile } from "@/lib/signedFile";
+import PDFPreviewModal from "@/components/PDFPreviewModal";
 
 interface Note {
   id: string;
@@ -185,6 +186,12 @@ const BrowseNotes = () => {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
 
+  // PDF Preview Modal state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState("");
+  const [previewNote, setPreviewNote] = useState<Note | null>(null);
+
   // Get subjects based on selected level
   const availableSubjects = useMemo(() => {
     if (levelFilter === "all") {
@@ -280,13 +287,22 @@ const BrowseNotes = () => {
       }
 
       if (result.signedUrl) {
-        await openSignedFileInNewTab(result.signedUrl, { title: note.title });
+        setPreviewUrl(result.signedUrl);
+        setPreviewTitle(note.title);
+        setPreviewNote(note);
+        setPreviewOpen(true);
       }
     } catch (error) {
       console.error("View error:", error);
       toast.error("Failed to view note");
     } finally {
       setViewing(null);
+    }
+  };
+
+  const handlePreviewDownload = () => {
+    if (previewNote) {
+      handleDownload(previewNote);
     }
   };
 
@@ -486,6 +502,15 @@ const BrowseNotes = () => {
           ))}
         </div>
       )}
+
+      {/* PDF Preview Modal */}
+      <PDFPreviewModal
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        signedUrl={previewUrl}
+        title={previewTitle}
+        onDownload={handlePreviewDownload}
+      />
     </div>
   );
 };

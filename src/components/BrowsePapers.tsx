@@ -8,6 +8,7 @@ import { Search, Download, Eye, GraduationCap, Building2, Loader2, Filter, X } f
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
+import { openSignedFileInNewTab } from "@/lib/signedFile";
 import { toast } from "sonner";
 
 interface Paper {
@@ -89,15 +90,7 @@ const BrowsePapers = () => {
       }
 
       if (result.signedUrl) {
-        // Use window.location.assign for more reliable navigation
-        // or create a temporary link and click it
-        const link = document.createElement("a");
-        link.href = result.signedUrl;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        await openSignedFileInNewTab(result.signedUrl, { title: paper.title });
       }
     } catch (error) {
       console.error("View error:", error);

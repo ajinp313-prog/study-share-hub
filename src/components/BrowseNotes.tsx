@@ -24,6 +24,7 @@ import {
   Filter,
 } from "lucide-react";
 import { toast } from "sonner";
+import { downloadSignedFile, openSignedFileInNewTab } from "@/lib/signedFile";
 
 interface Note {
   id: string;
@@ -279,14 +280,7 @@ const BrowseNotes = () => {
       }
 
       if (result.signedUrl) {
-        // Use a temporary link element for more reliable navigation
-        const link = document.createElement("a");
-        link.href = result.signedUrl;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        await openSignedFileInNewTab(result.signedUrl, { title: note.title });
       }
     } catch (error) {
       console.error("View error:", error);
@@ -325,14 +319,8 @@ const BrowseNotes = () => {
       // Increment download count
       await supabase.rpc("increment_note_download_count", { note_id: note.id });
 
-      // Trigger download
-      const link = document.createElement("a");
-      link.href = result.signedUrl;
-      link.download = note.title + ".pdf";
-      link.target = "_blank";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Trigger download via blob URL (avoids navigating to blocked domains)
+      await downloadSignedFile(result.signedUrl, `${note.title}.pdf`);
 
       toast.success("Download started!");
 

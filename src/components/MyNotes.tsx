@@ -28,6 +28,7 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { toast } from "sonner";
+import { openSignedFileInNewTab } from "@/lib/signedFile";
 
 interface Note {
   id: string;
@@ -91,14 +92,7 @@ const MyNotes = () => {
       }
 
       if (result.signedUrl) {
-        // Use a temporary link element for more reliable navigation
-        const link = document.createElement("a");
-        link.href = result.signedUrl;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        await openSignedFileInNewTab(result.signedUrl, { title: note.title });
       }
     } catch (error) {
       console.error("View error:", error);

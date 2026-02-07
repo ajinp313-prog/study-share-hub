@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { Upload, FileText, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useFileUpload } from "@/hooks/useFileUpload";
+import { UploadProgress } from "@/components/ui/upload-progress";
 
 const subjects = [
   "Mathematics",
@@ -52,8 +54,8 @@ const POINTS_PER_UPLOAD = 50;
 export const PaperUpload = () => {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const { progress, uploading, uploadFile, resetUpload } = useFileUpload();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -82,14 +84,10 @@ export const PaperUpload = () => {
     e.preventDefault();
     if (!user || !file) return;
 
-    setUploading(true);
-
     try {
-      // Upload file to storage
+      // Upload file to storage with progress tracking
       const filePath = `${user.id}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("papers")
-        .upload(filePath, file);
+      const { error: uploadError } = await uploadFile("papers", filePath, file);
 
       if (uploadError) throw uploadError;
 
@@ -125,8 +123,6 @@ export const PaperUpload = () => {
     } catch (error: any) {
       console.error("Upload error:", error);
       toast.error(error.message || "Failed to upload paper");
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -140,6 +136,7 @@ export const PaperUpload = () => {
       university: "",
       year: "",
     });
+    resetUpload();
   };
 
   if (!user) {
@@ -289,11 +286,13 @@ export const PaperUpload = () => {
             </div>
           </div>
 
+          <UploadProgress progress={progress} isVisible={uploading} />
+
           <Button type="submit" className="w-full" disabled={uploading || !file}>
             {uploading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading...
+                Uploading... {progress}%
               </>
             ) : (
               <>

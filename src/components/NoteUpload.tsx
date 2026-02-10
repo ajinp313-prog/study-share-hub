@@ -160,7 +160,7 @@ const levels = [
   { value: "PhD", label: "PhD / Doctoral" },
 ];
 
-const POINTS_PER_UPLOAD = 50;
+const POINTS_PER_UPLOAD = 25;
 
 export const NoteUpload = () => {
   const { user } = useAuth();

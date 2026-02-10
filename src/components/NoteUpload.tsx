@@ -20,10 +20,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Upload, FileText, Check, Loader2 } from "lucide-react";
+import { Upload, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { UploadProgress } from "@/components/ui/upload-progress";
+import { PDFFilePreview } from "@/components/PDFFilePreview";
 
 // Subjects mapped by academic level
 const subjectsByLevel: Record<string, string[]> = {
@@ -296,14 +297,9 @@ export const NoteUpload = () => {
                 required
                 className="flex-1"
               />
-              {file && <Check className="h-5 w-5 text-green-500" />}
+              {file && <Check className="h-5 w-5 text-primary" />}
             </div>
-            {file && (
-              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <FileText className="h-4 w-4" />
-                {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-              </p>
-            )}
+            {file && <PDFFilePreview file={file} />}
           </div>
 
           <div className="space-y-2">

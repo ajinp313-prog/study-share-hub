@@ -50,7 +50,7 @@ const levels = [
   { value: "PhD", label: "PhD / Doctoral" },
 ];
 
-const POINTS_PER_UPLOAD = 50;
+const POINTS_PER_UPLOAD = 20;
 
 export const PaperUpload = () => {
   const { user } = useAuth();

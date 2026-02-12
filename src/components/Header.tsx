@@ -62,6 +62,13 @@ const Header = () => {
           <nav className="hidden md:flex items-center gap-8">
             <button
               type="button"
+              onClick={() => navigate("/catalog")}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Catalog
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 if (user) {
                   navigate("/papers");
@@ -151,6 +158,16 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden border-t border-border bg-background animate-fade-in">
             <nav className="container py-4 flex flex-col gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  navigate("/catalog");
+                  setIsMenuOpen(false);
+                }}
+                className="text-left text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+              >
+                Catalog
+              </button>
               <button
                 type="button"
                 onClick={() => {

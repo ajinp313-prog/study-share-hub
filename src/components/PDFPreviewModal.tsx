@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -59,6 +60,7 @@ const PDFPreviewModal = ({
         }
         blobUrlRef.current = url;
         setBlobUrl(url);
+        setLoading(false);
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Failed to load PDF");
@@ -90,6 +92,9 @@ const PDFPreviewModal = ({
             <DialogTitle className="text-base sm:text-lg truncate pr-4">
               {title}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              PDF preview of the selected document
+            </DialogDescription>
             <div className="flex items-center gap-2 flex-shrink-0">
               {signedUrl && (
                 <>
@@ -148,11 +153,10 @@ const PDFPreviewModal = ({
           )}
 
           {blobUrl && (
-            <iframe
-              src={blobUrl}
-              className="w-full h-full border-0"
-              title={title}
-              onLoad={() => setLoading(false)}
+            <embed
+              src={`${blobUrl}#view=FitH`}
+              type="application/pdf"
+              className="w-full h-full"
             />
           )}
         </div>

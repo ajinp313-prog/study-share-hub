@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink, Loader2, X } from "lucide-react";
+import { Download, ExternalLink, Loader2, X, ZoomIn, ZoomOut } from "lucide-react";
 
 interface PDFPreviewModalProps {
   open: boolean;
@@ -15,6 +15,30 @@ interface PDFPreviewModalProps {
   signedUrl: string | null;
   title: string;
   onDownload?: () => void;
+}
+
+// Load PDF.js from CDN once
+let pdfjsPromise: Promise<any> | null = null;
+function loadPdfJs(): Promise<any> {
+  if (!pdfjsPromise) {
+    pdfjsPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js";
+      script.onload = () => {
+        const pdfjs = (window as any).pdfjsLib;
+        if (pdfjs) {
+          pdfjs.GlobalWorkerOptions.workerSrc =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js";
+          resolve(pdfjs);
+        } else {
+          reject(new Error("PDF.js failed to load"));
+        }
+      };
+      script.onerror = () => reject(new Error("Failed to load PDF.js script"));
+      document.head.appendChild(script);
+    });
+  }
+  return pdfjsPromise;
 }
 
 const PDFPreviewModal = ({
@@ -25,41 +49,88 @@ const PDFPreviewModal = ({
   onDownload,
 }: PDFPreviewModalProps) => {
   const [loading, setLoading] = useState(true);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [scale, setScale] = useState(1.5);
+  const [numPages, setNumPages] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const pdfDocRef = useRef<any>(null);
   const blobUrlRef = useRef<string | null>(null);
+
+  const renderPages = useCallback(async (pdfDoc: any, renderScale: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Clear existing canvases
+    container.innerHTML = "";
+
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i);
+      const viewport = page.getViewport({ scale: renderScale });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      canvas.style.display = "block";
+      canvas.style.margin = "0 auto 16px auto";
+      canvas.style.maxWidth = "100%";
+      canvas.style.height = "auto";
+
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        await page.render({ canvasContext: ctx, viewport }).promise;
+      }
+
+      container.appendChild(canvas);
+    }
+  }, []);
 
   useEffect(() => {
     if (!open || !signedUrl) {
-      // Cleanup blob URL when modal closes
+      // Cleanup
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
         blobUrlRef.current = null;
       }
-      setBlobUrl(null);
+      pdfDocRef.current = null;
       setError(null);
+      setNumPages(0);
       return;
     }
 
     let cancelled = false;
     setLoading(true);
     setError(null);
-    setBlobUrl(null);
 
     (async () => {
       try {
-        const resp = await fetch(signedUrl);
+        const [pdfjs, resp] = await Promise.all([
+          loadPdfJs(),
+          fetch(signedUrl),
+        ]);
+
+        if (cancelled) return;
         if (!resp.ok) throw new Error(`Failed to load PDF (${resp.status})`);
+
         const blob = await resp.blob();
-        // Force correct MIME type for inline display
         const pdfBlob = new Blob([blob], { type: "application/pdf" });
         const url = URL.createObjectURL(pdfBlob);
+
         if (cancelled) {
           URL.revokeObjectURL(url);
           return;
         }
+
         blobUrlRef.current = url;
-        setBlobUrl(url);
+
+        const loadingTask = pdfjs.getDocument(url);
+        const pdfDoc = await loadingTask.promise;
+
+        if (cancelled) return;
+
+        pdfDocRef.current = pdfDoc;
+        setNumPages(pdfDoc.numPages);
+
+        await renderPages(pdfDoc, scale);
         setLoading(false);
       } catch (e) {
         if (!cancelled) {
@@ -72,7 +143,15 @@ const PDFPreviewModal = ({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, signedUrl]);
+
+  // Re-render when scale changes
+  useEffect(() => {
+    if (pdfDocRef.current && !loading) {
+      renderPages(pdfDocRef.current, scale);
+    }
+  }, [scale, renderPages, loading]);
 
   const handleOpenInNewTab = () => {
     if (signedUrl) {
@@ -96,6 +175,29 @@ const PDFPreviewModal = ({
               PDF preview of the selected document
             </DialogDescription>
             <div className="flex items-center gap-2 flex-shrink-0">
+              {numPages > 0 && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setScale((s) => Math.max(0.5, s - 0.25))}
+                  >
+                    <ZoomOut className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground w-12 text-center">
+                    {Math.round(scale * 100)}%
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setScale((s) => Math.min(3, s + 0.25))}
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
               {signedUrl && (
                 <>
                   <Button
@@ -131,7 +233,7 @@ const PDFPreviewModal = ({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden bg-muted/50">
+        <div className="flex-1 overflow-y-auto bg-muted/50 p-4">
           {loading && !error && (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
@@ -152,13 +254,7 @@ const PDFPreviewModal = ({
             </div>
           )}
 
-          {blobUrl && (
-            <embed
-              src={`${blobUrl}#view=FitH`}
-              type="application/pdf"
-              className="w-full h-full"
-            />
-          )}
+          <div ref={containerRef} />
         </div>
       </DialogContent>
     </Dialog>

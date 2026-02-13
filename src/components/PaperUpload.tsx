@@ -26,7 +26,7 @@ import { useFileUpload } from "@/hooks/useFileUpload";
 import { UploadProgress } from "@/components/ui/upload-progress";
 import { PDFFilePreview } from "@/components/PDFFilePreview";
 
-const subjects = [
+const schoolSubjects = [
   "Mathematics",
   "Physics",
   "Chemistry",
@@ -39,6 +39,8 @@ const subjects = [
   "Business Studies",
 ];
 
+const FREE_TEXT_LEVELS = ["Engineering", "Graduate", "Masters", "PhD", "MBBS", "MD"];
+
 const levels = [
   { value: "10th", label: "10th Grade / Secondary" },
   { value: "+1", label: "+1 / 11th Grade" },
@@ -47,6 +49,8 @@ const levels = [
   { value: "Graduate", label: "Graduate" },
   { value: "Masters", label: "Postgraduate / Master's" },
   { value: "Engineering", label: "Engineering" },
+  { value: "MBBS", label: "MBBS" },
+  { value: "MD", label: "MD" },
   { value: "PhD", label: "PhD / Doctoral" },
 ];
 
@@ -210,24 +214,35 @@ export const PaperUpload = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Subject *</Label>
-              <Select
-                value={formData.subject}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, subject: value })
-                }
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select subject" />
-                </SelectTrigger>
-                <SelectContent className="bg-background border border-border z-50">
-                  {subjects.map((subject) => (
-                    <SelectItem key={subject} value={subject}>
-                      {subject}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {FREE_TEXT_LEVELS.includes(formData.level) ? (
+                <Input
+                  placeholder="Type your subject name"
+                  value={formData.subject}
+                  onChange={(e) =>
+                    setFormData({ ...formData, subject: e.target.value })
+                  }
+                  required
+                />
+              ) : (
+                <Select
+                  value={formData.subject}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, subject: value })
+                  }
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select subject" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border border-border z-50">
+                    {schoolSubjects.map((subject) => (
+                      <SelectItem key={subject} value={subject}>
+                        {subject}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -235,7 +250,7 @@ export const PaperUpload = () => {
               <Select
                 value={formData.level}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, level: value })
+                  setFormData({ ...formData, level: value, subject: "" })
                 }
                 required
               >

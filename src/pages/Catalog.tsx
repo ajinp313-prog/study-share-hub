@@ -18,6 +18,7 @@ import {
   StickyNote,
   Loader2,
   ChevronLeft,
+  Stethoscope,
 } from "lucide-react";
 
 interface SubjectCount {
@@ -51,12 +52,22 @@ const DEGREE_CATEGORIES = [
   {
     id: "pg",
     title: "Postgraduate",
-    description: "Master's, Graduate & PhD academic materials",
+    description: "Master's & Graduate academic materials",
     icon: GraduationCap,
-    levels: ["Graduate", "Masters", "PhD"],
+    levels: ["Graduate", "Masters"],
     gradient: "from-violet-500/10 to-purple-500/10",
     iconColor: "text-violet-600 dark:text-violet-400",
     borderColor: "border-violet-200 dark:border-violet-800",
+  },
+  {
+    id: "medical",
+    title: "Medical Field",
+    description: "MBBS, MD & PhD medical resources",
+    icon: Stethoscope,
+    levels: ["MBBS", "MD", "PhD"],
+    gradient: "from-rose-500/10 to-pink-500/10",
+    iconColor: "text-rose-600 dark:text-rose-400",
+    borderColor: "border-rose-200 dark:border-rose-800",
   },
 ];
 

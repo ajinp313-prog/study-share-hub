@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -24,11 +24,52 @@ const PDFPreviewModal = ({
   onDownload,
 }: PDFPreviewModalProps) => {
   const [loading, setLoading] = useState(true);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (open && signedUrl) {
-      setLoading(true);
+    if (!open || !signedUrl) {
+      // Cleanup blob URL when modal closes
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+      setBlobUrl(null);
+      setError(null);
+      return;
     }
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setBlobUrl(null);
+
+    (async () => {
+      try {
+        const resp = await fetch(signedUrl);
+        if (!resp.ok) throw new Error(`Failed to load PDF (${resp.status})`);
+        const blob = await resp.blob();
+        // Force correct MIME type for inline display
+        const pdfBlob = new Blob([blob], { type: "application/pdf" });
+        const url = URL.createObjectURL(pdfBlob);
+        if (cancelled) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        blobUrlRef.current = url;
+        setBlobUrl(url);
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Failed to load PDF");
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, signedUrl]);
 
   const handleOpenInNewTab = () => {
@@ -86,7 +127,7 @@ const PDFPreviewModal = ({
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden bg-muted/50">
-          {loading && (
+          {loading && !error && (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
@@ -95,9 +136,20 @@ const PDFPreviewModal = ({
             </div>
           )}
 
-          {signedUrl && (
+          {error && (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <p className="text-sm text-destructive mb-2">{error}</p>
+                <Button variant="outline" size="sm" onClick={handleOpenInNewTab}>
+                  Open in New Tab instead
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {blobUrl && (
             <iframe
-              src={signedUrl}
+              src={blobUrl}
               className="w-full h-full border-0"
               title={title}
               onLoad={() => setLoading(false)}

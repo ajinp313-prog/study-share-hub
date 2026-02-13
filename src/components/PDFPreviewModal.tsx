@@ -23,58 +23,21 @@ const PDFPreviewModal = ({
   title,
   onDownload,
 }: PDFPreviewModalProps) => {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (open && signedUrl) {
-      loadPDF();
+      setLoading(true);
     }
-
-    return () => {
-      // Cleanup blob URL when modal closes
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
-        setBlobUrl(null);
-      }
-    };
   }, [open, signedUrl]);
 
-  const loadPDF = async () => {
-    if (!signedUrl) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(signedUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to load PDF (${response.status})`);
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      setBlobUrl(url);
-    } catch (err) {
-      console.error("PDF load error:", err);
-      setError(err instanceof Error ? err.message : "Failed to load PDF");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleOpenInNewTab = () => {
-    if (blobUrl) {
-      window.open(blobUrl, "_blank", "noopener,noreferrer");
+    if (signedUrl) {
+      window.open(signedUrl, "_blank", "noopener,noreferrer");
     }
   };
 
   const handleClose = () => {
-    if (blobUrl) {
-      URL.revokeObjectURL(blobUrl);
-      setBlobUrl(null);
-    }
-    setError(null);
     onOpenChange(false);
   };
 
@@ -87,7 +50,7 @@ const PDFPreviewModal = ({
               {title}
             </DialogTitle>
             <div className="flex items-center gap-2 flex-shrink-0">
-              {blobUrl && (
+              {signedUrl && (
                 <>
                   <Button
                     variant="outline"
@@ -132,22 +95,12 @@ const PDFPreviewModal = ({
             </div>
           )}
 
-          {error && (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center p-4">
-                <p className="text-destructive mb-4">{error}</p>
-                <Button variant="outline" onClick={loadPDF}>
-                  Try Again
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {blobUrl && !loading && !error && (
+          {signedUrl && (
             <iframe
-              src={blobUrl}
+              src={signedUrl}
               className="w-full h-full border-0"
               title={title}
+              onLoad={() => setLoading(false)}
             />
           )}
         </div>

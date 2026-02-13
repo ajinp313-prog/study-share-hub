@@ -60,6 +60,7 @@ export const PaperUpload = () => {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [customSubject, setCustomSubject] = useState(false);
   const { progress, uploading, uploadFile, resetUpload } = useFileUpload();
   const [formData, setFormData] = useState({
     title: "",
@@ -133,6 +134,7 @@ export const PaperUpload = () => {
 
   const resetForm = () => {
     setFile(null);
+    setCustomSubject(false);
     setFormData({
       title: "",
       description: "",
@@ -214,21 +216,40 @@ export const PaperUpload = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Subject *</Label>
-              {FREE_TEXT_LEVELS.includes(formData.level) ? (
-                <Input
-                  placeholder="Type your subject name"
-                  value={formData.subject}
-                  onChange={(e) =>
-                    setFormData({ ...formData, subject: e.target.value })
-                  }
-                  required
-                />
+              {FREE_TEXT_LEVELS.includes(formData.level) || customSubject ? (
+                <div className="space-y-1">
+                  <Input
+                    placeholder="Type your subject name"
+                    value={formData.subject}
+                    onChange={(e) =>
+                      setFormData({ ...formData, subject: e.target.value })
+                    }
+                    required
+                  />
+                  {!FREE_TEXT_LEVELS.includes(formData.level) && (
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => {
+                        setCustomSubject(false);
+                        setFormData({ ...formData, subject: "" });
+                      }}
+                    >
+                      ← Back to list
+                    </button>
+                  )}
+                </div>
               ) : (
                 <Select
                   value={formData.subject}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, subject: value })
-                  }
+                  onValueChange={(value) => {
+                    if (value === "__other__") {
+                      setCustomSubject(true);
+                      setFormData({ ...formData, subject: "" });
+                    } else {
+                      setFormData({ ...formData, subject: value });
+                    }
+                  }}
                   required
                 >
                   <SelectTrigger>
@@ -240,6 +261,9 @@ export const PaperUpload = () => {
                         {subject}
                       </SelectItem>
                     ))}
+                    <SelectItem value="__other__" className="text-primary font-medium">
+                      Other (type your own)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               )}
@@ -249,9 +273,10 @@ export const PaperUpload = () => {
               <Label>Level *</Label>
               <Select
                 value={formData.level}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, level: value, subject: "" })
-                }
+                onValueChange={(value) => {
+                  setCustomSubject(false);
+                  setFormData({ ...formData, level: value, subject: "" });
+                }}
                 required
               >
                 <SelectTrigger>

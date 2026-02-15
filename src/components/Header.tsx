@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, BookOpen, User, LogOut } from "lucide-react";
+import { Menu, X, BookOpen, User, LogOut, Moon, Sun } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +20,7 @@ const Header = () => {
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin");
   const { user, signOut, loading } = useAuth();
   const navigate = useNavigate();
-
+  const { theme, toggleTheme } = useTheme();
   const openSignIn = () => {
     setAuthModalTab("signin");
     setAuthModalOpen(true);
@@ -96,6 +97,9 @@ const Header = () => {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-9 w-9" aria-label="Toggle dark mode">
+              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
             {loading ? (
               <div className="h-8 w-8 animate-pulse rounded-full bg-muted"></div>
             ) : user ? (
@@ -145,13 +149,18 @@ const Header = () => {
           </div>
 
           {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2 text-foreground"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
+          <div className="flex md:hidden items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-9 w-9" aria-label="Toggle dark mode">
+              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+            <button
+              className="p-2 text-foreground"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}

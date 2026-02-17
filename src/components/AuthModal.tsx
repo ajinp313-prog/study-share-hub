@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { lovable } from "@/integrations/lovable/index";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -131,11 +132,8 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
     setErrors({});
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-        },
+      const { error } = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
       });
 
       if (error) {

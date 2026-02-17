@@ -23,12 +23,12 @@ function loadPdfJs(): Promise<any> {
   if (!pdfjsPromise) {
     pdfjsPromise = new Promise((resolve, reject) => {
       const script = document.createElement("script");
-      script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js";
+      script.src = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js";
       script.onload = () => {
         const pdfjs = (window as any).pdfjsLib;
         if (pdfjs) {
           pdfjs.GlobalWorkerOptions.workerSrc =
-            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js";
+            "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
           resolve(pdfjs);
         } else {
           reject(new Error("PDF.js failed to load"));

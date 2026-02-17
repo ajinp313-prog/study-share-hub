@@ -17,7 +17,6 @@ import {
 import { UserPlus, LogIn, Mail, Lock, Sparkles, Phone, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { z } from "zod";
 import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
@@ -132,19 +131,17 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
     setErrors({});
 
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
       });
 
-      if (result.redirected) {
-        // Page is redirecting to OAuth provider
-        return;
-      }
-
-      if (result.error) {
+      if (error) {
         toast({
           title: "Google Sign-In Failed",
-          description: result.error.message,
+          description: error.message,
           variant: "destructive",
         });
         setIsGoogleLoading(false);
@@ -154,7 +151,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
       // Auth state change listener will handle profile completion check
       toast({
         title: "Welcome!",
-        description: "Signing you in with Google...",
+        description: "Redirecting to Google...",
       });
     } catch (error) {
       toast({

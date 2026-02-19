@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -24,6 +24,13 @@ export const useAuth = () => {
   return context;
 };
 
+// Derive the storage key from the project URL to avoid hardcoding
+const getStorageKey = () => {
+  const url = import.meta.env.VITE_SUPABASE_URL || "";
+  const projectId = url.replace("https://", "").split(".")[0];
+  return `sb-${projectId}-auth-token`;
+};
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -32,13 +39,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    // Prevent race condition by tracking initialization state
     let isMounted = true;
 
-    // Get existing session FIRST to avoid race condition
     const initializeAuth = async () => {
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
@@ -46,13 +51,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (isMounted) {
           setSession(initialSession);
           setUser(initialSession?.user ?? null);
-          setInitialized(true);
+          initializedRef.current = true;
           setLoading(false);
         }
       } catch (error) {
         console.error("Failed to get initial session:", error);
         if (isMounted) {
-          setInitialized(true);
+          initializedRef.current = true;
           setLoading(false);
         }
       }
@@ -60,11 +65,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     initializeAuth();
 
-    // Set up auth state listener AFTER getting initial session
+    // Single subscription — no dependency on initialized state
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, newSession) => {
-        // Only process auth changes after initialization to avoid race condition
-        if (isMounted && initialized) {
+        if (isMounted && initializedRef.current) {
           setSession(newSession);
           setUser(newSession?.user ?? null);
         }
@@ -75,10 +79,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [initialized]);
+  }, []); // stable deps — runs once
 
   const signOut = async () => {
-    // Clear local state first
     setSession(null);
     setUser(null);
     
@@ -88,9 +91,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.warn("Sign out error (session may already be expired):", error);
     }
     
-    // Fallback: manually clear Supabase auth token from localStorage
-    const storageKey = `sb-styrpqafgeexrhlxegkl-auth-token`;
-    localStorage.removeItem(storageKey);
+    // Fallback: clear auth token using derived key
+    localStorage.removeItem(getStorageKey());
   };
 
   return (

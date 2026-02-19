@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { REWARDS } from "@/constants/rewards";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
@@ -195,7 +196,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Upload Paper</CardTitle>
-                  <CardDescription>Share & earn 20 points</CardDescription>
+                  <CardDescription>Share & earn {REWARDS.PAPERS_UPLOAD} points</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -235,7 +236,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Upload Note</CardTitle>
-                  <CardDescription>Share & earn 25 points</CardDescription>
+                  <CardDescription>Share & earn {REWARDS.NOTES_UPLOAD} points</CardDescription>
                 </div>
               </div>
             </CardHeader>

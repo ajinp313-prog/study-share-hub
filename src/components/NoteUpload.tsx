@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { REWARDS } from "@/constants/rewards";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -160,7 +161,7 @@ const levels = [
   { value: "PhD", label: "PhD / Doctoral" },
 ];
 
-const POINTS_PER_UPLOAD = 25;
+const POINTS_PER_UPLOAD = REWARDS.NOTES_UPLOAD;
 
 export const NoteUpload = () => {
   const { user } = useAuth();

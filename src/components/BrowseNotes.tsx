@@ -175,11 +175,15 @@ const levels = [
   { value: "PhD", label: "PhD" },
 ];
 
+const PAGE_SIZE = 20;
+
 const BrowseNotes = () => {
   const { user } = useAuth();
   const { getSignedUrl } = useSignedUrl();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("All Subjects");
   const [levelFilter, setLevelFilter] = useState("all");
@@ -195,7 +199,6 @@ const BrowseNotes = () => {
   // Get subjects based on selected level
   const availableSubjects = useMemo(() => {
     if (levelFilter === "all") {
-      // When "All Levels" is selected, show all unique subjects across all levels
       const allSubjects = new Set<string>();
       Object.values(subjectsByLevel).forEach(subjects => {
         subjects.forEach(subject => allSubjects.add(subject));
@@ -213,16 +216,26 @@ const BrowseNotes = () => {
   }, [levelFilter, availableSubjects, subjectFilter]);
 
   useEffect(() => {
-    fetchNotes();
+    fetchNotes(true);
   }, [subjectFilter, levelFilter]);
 
-  const fetchNotes = async () => {
-    setLoading(true);
-    // Use notes_public view which excludes user_id for privacy
+  const fetchNotes = async (reset = false) => {
+    if (reset) {
+      setLoading(true);
+      setNotes([]);
+    } else {
+      setLoadingMore(true);
+    }
+
+    const currentNotes = reset ? [] : notes;
+    const from = currentNotes.length;
+    const to = from + PAGE_SIZE - 1;
+
     let query = supabase
       .from("notes_public")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (subjectFilter !== "All Subjects") {
       query = query.eq("subject", subjectFilter);
@@ -238,7 +251,6 @@ const BrowseNotes = () => {
       console.error("Error fetching notes:", error);
       toast.error("Failed to load notes");
     } else {
-      // Filter out any notes with null required fields from the view and map to Note type
       const validNotes: Note[] = (data || [])
         .filter(note => 
           note.id !== null && 
@@ -261,9 +273,11 @@ const BrowseNotes = () => {
           created_at: note.created_at as string,
           file_path: note.file_path as string,
         }));
-      setNotes(validNotes);
+      setNotes(prev => reset ? validNotes : [...prev, ...validNotes]);
+      setHasMore(validNotes.length === PAGE_SIZE);
     }
     setLoading(false);
+    setLoadingMore(false);
   };
 
   const handleView = async (note: Note) => {
@@ -340,8 +354,10 @@ const BrowseNotes = () => {
 
       toast.success("Download started!");
 
-      // Refresh to update download count
-      fetchNotes();
+      // Update local state for download count
+      setNotes(prev => prev.map(n => 
+        n.id === note.id ? { ...n, downloads: n.downloads + 1 } : n
+      ));
     } catch (error) {
       console.error("Download error:", error);
       toast.error("Failed to download note");
@@ -422,6 +438,7 @@ const BrowseNotes = () => {
           </p>
         </div>
       ) : (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredNotes.map((note) => (
             <Card key={note.id} className="hover:shadow-lg transition-shadow">
@@ -501,6 +518,24 @@ const BrowseNotes = () => {
             </Card>
           ))}
         </div>
+
+        {hasMore && !searchQuery && subjectFilter === "All Subjects" && levelFilter === "all" && (
+          <div className="flex justify-center mt-8">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => fetchNotes(false)}
+              disabled={loadingMore}
+              className="gap-2"
+            >
+              {loadingMore ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null}
+              Load More Notes
+            </Button>
+          </div>
+        )}
+      </>
       )}
 
       {/* PDF Preview Modal */}

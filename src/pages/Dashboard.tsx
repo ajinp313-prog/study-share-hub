@@ -61,9 +61,11 @@ const Dashboard = () => {
       if (profileData) {
         setProfile(profileData);
         
-        // Check if profile needs completion (Google sign-in users)
+        // Check if profile needs completion (Google sign-in users only)
+        // Email-registered users will have mobile set by the trigger, so only show
+        // the modal when mobile is empty (indicates Google/OAuth sign-in)
         if (!profileChecked) {
-          if (!profileData.mobile || !profileData.study_level) {
+          if (!profileData.mobile || profileData.mobile === '') {
             setShowProfileCompletion(true);
           }
           setProfileChecked(true);

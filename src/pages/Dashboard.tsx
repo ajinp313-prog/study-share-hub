@@ -195,7 +195,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Upload Paper</CardTitle>
-                  <CardDescription>Share & earn 50 points</CardDescription>
+                  <CardDescription>Share & earn 20 points</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -235,7 +235,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Upload Note</CardTitle>
-                  <CardDescription>Share & earn 50 points</CardDescription>
+                  <CardDescription>Share & earn 25 points</CardDescription>
                 </div>
               </div>
             </CardHeader>

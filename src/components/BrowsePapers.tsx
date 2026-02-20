@@ -22,11 +22,15 @@ interface Paper {
   file_path: string;
 }
 
+const PAGE_SIZE = 20;
+
 const BrowsePapers = () => {
   const { user } = useAuth();
   const { getSignedUrl } = useSignedUrl();
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [downloading, setDownloading] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
@@ -54,24 +58,37 @@ const BrowsePapers = () => {
   ];
 
   useEffect(() => {
-    fetchPapers();
+    fetchPapers(true);
   }, []);
 
-  const fetchPapers = async () => {
-    setLoading(true);
+  const fetchPapers = async (reset = false) => {
+    if (reset) {
+      setLoading(true);
+      setPapers([]);
+    } else {
+      setLoadingMore(true);
+    }
+
+    const from = reset ? 0 : papers.length;
+    const to = from + PAGE_SIZE - 1;
+
     const { data, error } = await supabase
       .from("papers")
       .select("id, title, subject, level, university, year, downloads, file_path")
       .eq("status", "approved")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (error) {
       console.error("Error fetching papers:", error);
       toast.error("Failed to load papers");
     } else {
-      setPapers(data || []);
+      const newData = data || [];
+      setPapers(prev => reset ? newData : [...prev, ...newData]);
+      setHasMore(newData.length === PAGE_SIZE);
     }
     setLoading(false);
+    setLoadingMore(false);
   };
 
 
@@ -284,73 +301,92 @@ const BrowsePapers = () => {
             </p>
           </div>
         ) : (
-          <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
-            {filteredPapers.map((paper) => (
-              <Card
-                key={paper.id}
-                className="hover:shadow-md transition-all border-border group"
-              >
-                <CardContent className="p-4 sm:p-5">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors text-sm sm:text-base line-clamp-2">
-                        {paper.title}
-                      </h4>
-                      {paper.university && (
-                        <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
-                          <Building2 className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                          <span className="truncate">{paper.university}</span>
-                          {paper.year && <span className="flex-shrink-0">• {paper.year}</span>}
+          <>
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
+              {filteredPapers.map((paper) => (
+                <Card
+                  key={paper.id}
+                  className="hover:shadow-md transition-all border-border group"
+                >
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors text-sm sm:text-base line-clamp-2">
+                          {paper.title}
+                        </h4>
+                        {paper.university && (
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
+                            <Building2 className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                            <span className="truncate">{paper.university}</span>
+                            {paper.year && <span className="flex-shrink-0">• {paper.year}</span>}
+                          </div>
+                        )}
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {paper.subject}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            <GraduationCap className="h-3 w-3 mr-1" />
+                            {paper.level}
+                          </Badge>
                         </div>
-                      )}
-                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {paper.subject}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          <GraduationCap className="h-3 w-3 mr-1" />
-                          {paper.level}
-                        </Badge>
+                      </div>
+                      <div className="flex flex-row sm:flex-col gap-2 mt-2 sm:mt-0">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
+                          onClick={() => handleView(paper)}
+                          disabled={viewing === paper.id}
+                        >
+                          {viewing === paper.id ? (
+                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                          ) : (
+                            <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                          )}
+                          View
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
+                          onClick={() => handleDownload(paper)}
+                          disabled={downloading === paper.id}
+                        >
+                          {downloading === paper.id ? (
+                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                          ) : (
+                            <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                          )}
+                          Download
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex flex-row sm:flex-col gap-2 mt-2 sm:mt-0">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
-                        onClick={() => handleView(paper)}
-                        disabled={viewing === paper.id}
-                      >
-                        {viewing === paper.id ? (
-                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                        ) : (
-                          <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                        )}
-                        View
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
-                        onClick={() => handleDownload(paper)}
-                        disabled={downloading === paper.id}
-                      >
-                        {downloading === paper.id ? (
-                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                        ) : (
-                          <Download className="h-3 w-3 sm:h-4 sm:w-4" />
-                        )}
-                        Download
-                      </Button>
+                    <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-border flex items-center text-xs text-muted-foreground">
+                      <Download className="h-3 w-3 mr-1" />
+                      {paper.downloads} downloads
                     </div>
-                  </div>
-                  <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-border flex items-center text-xs text-muted-foreground">
-                    <Download className="h-3 w-3 mr-1" />
-                    {paper.downloads} downloads
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {hasMore && !searchQuery && levelFilter === "all" && yearFilter === "" && (
+              <div className="flex justify-center mt-8">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => fetchPapers(false)}
+                  disabled={loadingMore}
+                  className="gap-2"
+                >
+                  {loadingMore ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : null}
+                  Load More Papers
+                </Button>
+              </div>
+            )}
+          </>
         )}
 
         {/* PDF Preview Modal */}

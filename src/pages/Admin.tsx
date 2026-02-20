@@ -13,6 +13,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import {
   FileText,
@@ -28,6 +39,7 @@ import {
   AlertCircle,
   Send,
   StickyNote,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -92,6 +104,8 @@ const Admin = () => {
   const [updating, setUpdating] = useState<string | null>(null);
   const [updatingNote, setUpdatingNote] = useState<string | null>(null);
   const [updatingTicket, setUpdatingTicket] = useState<string | null>(null);
+  const [deletingPaper, setDeletingPaper] = useState<string | null>(null);
+  const [deletingNote, setDeletingNote] = useState<string | null>(null);
   
   // Ticket detail modal
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
@@ -282,6 +296,38 @@ const Admin = () => {
     } finally {
       setViewingNote(null);
     }
+  };
+
+  const handleDeletePaper = async (paperId: string, filePath: string) => {
+    setDeletingPaper(paperId);
+    const { error: storageError } = await supabase.storage.from("papers").remove([filePath]);
+    if (storageError) console.error("Storage delete error:", storageError);
+
+    const { error } = await supabase.from("papers").delete().eq("id", paperId);
+    if (error) {
+      toast.error("Failed to delete paper");
+      console.error("Delete error:", error);
+    } else {
+      toast.success("Paper deleted successfully");
+      setPapers(papers.filter((p) => p.id !== paperId));
+    }
+    setDeletingPaper(null);
+  };
+
+  const handleDeleteNote = async (noteId: string, filePath: string) => {
+    setDeletingNote(noteId);
+    const { error: storageError } = await supabase.storage.from("notes").remove([filePath]);
+    if (storageError) console.error("Storage delete error:", storageError);
+
+    const { error } = await supabase.from("notes").delete().eq("id", noteId);
+    if (error) {
+      toast.error("Failed to delete note");
+      console.error("Delete error:", error);
+    } else {
+      toast.success("Note deleted successfully");
+      setNotes(notes.filter((n) => n.id !== noteId));
+    }
+    setDeletingNote(null);
   };
 
   const handleUpdateTicketStatus = async (ticketId: string, newStatus: string) => {
@@ -514,6 +560,41 @@ const Admin = () => {
                       Reset to Pending
                     </Button>
                   )}
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        disabled={deletingPaper === paper.id}
+                      >
+                        {deletingPaper === paper.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-1" />
+                        )}
+                        Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Paper</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{paper.title}"? This will remove the file and database record permanently.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeletePaper(paper.id, paper.file_path)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </CardContent>
@@ -643,6 +724,41 @@ const Admin = () => {
                       Reset to Pending
                     </Button>
                   )}
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        disabled={deletingNote === note.id}
+                      >
+                        {deletingNote === note.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-1" />
+                        )}
+                        Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Note</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{note.title}"? This will remove the file and database record permanently.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteNote(note.id, note.file_path)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </CardContent>

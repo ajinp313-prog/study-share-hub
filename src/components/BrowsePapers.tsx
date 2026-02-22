@@ -73,7 +73,7 @@ const BrowsePapers = () => {
     const to = from + PAGE_SIZE - 1;
 
     const { data, error } = await supabase
-      .from("papers")
+      .from("papers_public" as any)
       .select("id, title, subject, level, university, year, downloads, file_path")
       .eq("status", "approved")
       .order("created_at", { ascending: false })
@@ -83,7 +83,7 @@ const BrowsePapers = () => {
       console.error("Error fetching papers:", error);
       toast.error("Failed to load papers");
     } else {
-      const newData = data || [];
+      const newData = (data || []) as unknown as Paper[];
       setPapers(prev => reset ? newData : [...prev, ...newData]);
       setHasMore(newData.length === PAGE_SIZE);
     }

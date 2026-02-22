@@ -90,7 +90,7 @@ const Catalog = () => {
 
     // Fetch approved papers grouped by subject+level
     const { data: papers } = await supabase
-      .from("papers")
+      .from("papers_public" as any)
       .select("subject, level")
       .eq("status", "approved");
 
@@ -102,7 +102,7 @@ const Catalog = () => {
 
     const countMap = new Map<string, SubjectCount>();
 
-    (papers || []).forEach((p) => {
+    ((papers || []) as unknown as { subject: string; level: string }[]).forEach((p) => {
       const key = `${p.subject}__${p.level}`;
       const existing = countMap.get(key) || {
         subject: p.subject,

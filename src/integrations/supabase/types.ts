@@ -319,6 +319,54 @@ export type Database = {
         }
         Relationships: []
       }
+      papers_public: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          downloads: number | null
+          file_path: string | null
+          file_size: number | null
+          id: string | null
+          level: string | null
+          status: string | null
+          subject: string | null
+          title: string | null
+          university: string | null
+          updated_at: string | null
+          year: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          downloads?: number | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string | null
+          level?: string | null
+          status?: string | null
+          subject?: string | null
+          title?: string | null
+          university?: string | null
+          updated_at?: string | null
+          year?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          downloads?: number | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string | null
+          level?: string | null
+          status?: string | null
+          subject?: string | null
+          title?: string | null
+          university?: string | null
+          updated_at?: string | null
+          year?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       award_upload_points: {

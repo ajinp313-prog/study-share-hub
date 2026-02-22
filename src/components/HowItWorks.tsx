@@ -1,4 +1,5 @@
 import { Upload, Star, BookOpen, ArrowRight } from "lucide-react";
+import { REWARDS } from "@/constants/rewards";
 
 const steps = [
   {
@@ -10,7 +11,7 @@ const steps = [
   {
     icon: Star,
     title: "Earn Points",
-    description: "Get 50 points for every approved paper. The more you share, the more you earn!",
+    description: `Earn ${REWARDS.PAPERS_UPLOAD} points per paper and ${REWARDS.NOTES_UPLOAD} points per note. The more you share, the more you earn!`,
     color: "bg-accent/10 text-accent",
   },
   {

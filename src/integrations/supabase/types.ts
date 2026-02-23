@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      download_history: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_level: string
+          item_subject: string
+          item_title: string
+          item_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_level: string
+          item_subject: string
+          item_title: string
+          item_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_level?: string
+          item_subject?: string
+          item_title?: string
+          item_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       feedback: {
         Row: {
           category: string

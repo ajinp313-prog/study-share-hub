@@ -349,6 +349,18 @@ const BrowseNotes = () => {
       // Increment download count
       await supabase.rpc("increment_note_download_count", { note_id: note.id });
 
+      // Record download in history
+      if (user) {
+        await supabase.from("download_history").insert({
+          user_id: user.id,
+          item_id: note.id,
+          item_type: "note",
+          item_title: note.title,
+          item_subject: note.subject,
+          item_level: note.level,
+        });
+      }
+
       // Trigger download via blob URL (avoids navigating to blocked domains)
       await downloadSignedFile(result.signedUrl, `${note.title}.pdf`);
 

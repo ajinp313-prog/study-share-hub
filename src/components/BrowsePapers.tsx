@@ -9,6 +9,7 @@ import { Search, Download, Eye, GraduationCap, Building2, Loader2, Filter, X } f
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
+import { downloadSignedFile } from "@/lib/signedFile";
 import PDFPreviewModal from "@/components/PDFPreviewModal";
 import { toast } from "sonner";
 
@@ -183,17 +184,8 @@ const BrowsePapers = () => {
         });
       }
 
-      // Trigger download using signed URL
-      const response = await fetch(result.signedUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${paper.title}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      // Trigger download using shared utility
+      await downloadSignedFile(result.signedUrl, `${paper.title}.pdf`);
 
       // Update local state
       setPapers(papers.map(p => 

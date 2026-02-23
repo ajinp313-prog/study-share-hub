@@ -171,6 +171,18 @@ const BrowsePapers = () => {
         console.error("Error incrementing download:", rpcError);
       }
 
+      // Record download in history
+      if (user) {
+        await supabase.from("download_history").insert({
+          user_id: user.id,
+          item_id: paper.id,
+          item_type: "paper",
+          item_title: paper.title,
+          item_subject: paper.subject,
+          item_level: paper.level,
+        });
+      }
+
       // Trigger download using signed URL
       const response = await fetch(result.signedUrl);
       const blob = await response.blob();

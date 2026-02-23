@@ -1,14 +1,58 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Users, FileText, Award } from "lucide-react";
+import { ArrowRight, FileText, Award } from "lucide-react";
 import AuthModal from "./AuthModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const Hero = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [stats, setStats] = useState({ papers: 0, students: 0, universities: 0 });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      // Count approved papers
+      const { count: papersCount } = await supabase
+        .from("papers_public" as any)
+        .select("*", { count: "exact", head: true });
+
+      // Count approved notes
+      const { count: notesCount } = await supabase
+        .from("notes_public")
+        .select("*", { count: "exact", head: true });
+
+      // Count unique universities from papers
+      const { data: paperUnis } = await supabase
+        .from("papers_public" as any)
+        .select("university")
+        .not("university", "is", null);
+
+      const { data: noteUnis } = await supabase
+        .from("notes_public")
+        .select("university")
+        .not("university", "is", null);
+
+      const allUnis = new Set<string>();
+      ((paperUnis || []) as any[]).forEach((p: any) => { if (p.university) allUnis.add(p.university); });
+      (noteUnis || []).forEach((n) => { if (n.university) allUnis.add(n.university); });
+
+      setStats({
+        papers: (papersCount || 0) + (notesCount || 0),
+        students: 0, // We can't expose profile count publicly
+        universities: allUnis.size,
+      });
+    };
+
+    fetchStats();
+  }, []);
+
+  const formatCount = (n: number) => {
+    if (n === 0) return "0";
+    return String(n);
+  };
 
   return (
     <>
@@ -34,8 +78,8 @@ const Hero = () => {
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: "0.2s" }}>
-              Access thousands of question papers from high school to engineering. 
-              Upload your papers, earn rewards, and help fellow students succeed.
+              Access question papers and study notes from high school to engineering. 
+              Upload your materials, earn rewards, and help fellow students succeed.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12 animate-fade-in" style={{ animationDelay: "0.3s" }}>
@@ -59,26 +103,19 @@ const Hero = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-6 max-w-lg mx-auto animate-fade-in" style={{ animationDelay: "0.4s" }}>
+            <div className="grid grid-cols-2 gap-6 max-w-sm mx-auto animate-fade-in" style={{ animationDelay: "0.4s" }}>
               <div className="text-center">
                 <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 rounded-xl bg-primary/10">
                   <FileText className="h-6 w-6 text-primary" />
                 </div>
-                <p className="text-2xl font-bold text-foreground">10K+</p>
-                <p className="text-sm text-muted-foreground">Papers</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 rounded-xl bg-success/10">
-                  <Users className="h-6 w-6 text-success" />
-                </div>
-                <p className="text-2xl font-bold text-foreground">5K+</p>
-                <p className="text-sm text-muted-foreground">Students</p>
+                <p className="text-2xl font-bold text-foreground">{formatCount(stats.papers)}</p>
+                <p className="text-sm text-muted-foreground">Resources</p>
               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center w-12 h-12 mx-auto mb-3 rounded-xl bg-accent/10">
                   <Award className="h-6 w-6 text-accent" />
                 </div>
-                <p className="text-2xl font-bold text-foreground">500+</p>
+                <p className="text-2xl font-bold text-foreground">{formatCount(stats.universities)}</p>
                 <p className="text-sm text-muted-foreground">Universities</p>
               </div>
             </div>

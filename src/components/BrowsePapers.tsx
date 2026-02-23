@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,11 +28,12 @@ const PAGE_SIZE = 20;
 const BrowsePapers = () => {
   const { user } = useAuth();
   const { getSignedUrl } = useSignedUrl();
+  const [searchParams] = useSearchParams();
   const [papers, setPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [downloading, setDownloading] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
   
@@ -42,7 +44,7 @@ const BrowsePapers = () => {
   const [previewPaper, setPreviewPaper] = useState<Paper | null>(null);
   
   // Filter states
-  const [levelFilter, setLevelFilter] = useState<string>("all");
+  const [levelFilter, setLevelFilter] = useState<string>(searchParams.get("level") || "all");
   const [yearFilter, setYearFilter] = useState<string>("");
 
   // Predefined study levels
@@ -54,6 +56,8 @@ const BrowsePapers = () => {
     "Graduate",
     "Masters",
     "Engineering",
+    "MBBS",
+    "MD",
     "PhD"
   ];
 

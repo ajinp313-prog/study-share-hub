@@ -310,7 +310,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
     try {
       const redirectUrl = `${window.location.origin}/dashboard`;
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: signUpData.email,
         password: signUpData.password,
         options: {
@@ -342,14 +342,26 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
         return;
       }
 
-      // Update profile with additional info
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("profiles").update({
-          study_level: signUpData.studyLevel,
-          subjects_of_interest: selectedSubjects,
-          career_goals: signUpData.careerGoals,
-        }).eq("user_id", user.id);
+      // If email confirmation is required, no active session exists yet
+      if (!data.session) {
+        toast({
+          title: "Check your email",
+          description: "Your account was created. Please verify your email, then sign in.",
+        });
+        setActiveTab("signin");
+        return;
+      }
+
+      // Update profile with additional info for confirmed/auto-confirmed signups
+      if (data.user) {
+        await supabase
+          .from("profiles")
+          .update({
+            study_level: signUpData.studyLevel,
+            subjects_of_interest: selectedSubjects,
+            career_goals: signUpData.careerGoals,
+          })
+          .eq("user_id", data.user.id);
       }
 
       toast({

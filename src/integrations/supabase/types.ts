@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      download_history: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_level: string
+          item_subject: string
+          item_title: string
+          item_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_level: string
+          item_subject: string
+          item_title: string
+          item_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_level?: string
+          item_subject?: string
+          item_title?: string
+          item_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       feedback: {
         Row: {
           category: string
@@ -316,6 +349,54 @@ export type Database = {
           title?: string | null
           university?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      papers_public: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          downloads: number | null
+          file_path: string | null
+          file_size: number | null
+          id: string | null
+          level: string | null
+          status: string | null
+          subject: string | null
+          title: string | null
+          university: string | null
+          updated_at: string | null
+          year: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          downloads?: number | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string | null
+          level?: string | null
+          status?: string | null
+          subject?: string | null
+          title?: string | null
+          university?: string | null
+          updated_at?: string | null
+          year?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          downloads?: number | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string | null
+          level?: string | null
+          status?: string | null
+          subject?: string | null
+          title?: string | null
+          university?: string | null
+          updated_at?: string | null
+          year?: number | null
         }
         Relationships: []
       }

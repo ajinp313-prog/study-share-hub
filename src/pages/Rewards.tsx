@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { REWARDS } from "@/constants/rewards";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
@@ -201,7 +202,7 @@ const Rewards = () => {
           </p>
           <Button onClick={() => navigate("/papers")} className="gap-2">
             <Gift className="h-4 w-4" />
-            Upload Papers & Earn 50 Points Each
+            Upload Papers & Earn {REWARDS.PAPERS_UPLOAD} Points Each
           </Button>
         </div>
       </main>

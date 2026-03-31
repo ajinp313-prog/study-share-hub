@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import AuthModal from "@/components/AuthModal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,19 +91,17 @@ const Catalog = () => {
 
     // Fetch approved papers grouped by subject+level
     const { data: papers } = await supabase
-      .from("papers")
-      .select("subject, level")
-      .eq("status", "approved");
+      .from("papers_public" as any)
+      .select("subject, level");
 
     // Fetch approved notes grouped by subject+level
     const { data: notes } = await supabase
       .from("notes_public")
-      .select("subject, level")
-      .eq("status", "approved");
+      .select("subject, level");
 
     const countMap = new Map<string, SubjectCount>();
 
-    (papers || []).forEach((p) => {
+    ((papers || []) as unknown as { subject: string; level: string }[]).forEach((p) => {
       const key = `${p.subject}__${p.level}`;
       const existing = countMap.get(key) || {
         subject: p.subject,
@@ -158,9 +157,13 @@ const Catalog = () => {
     return groups;
   }, [filteredSubjects]);
 
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+
   const handleSubjectClick = (subject: string, level: string) => {
-    if (!user) return;
-    // Navigate to papers page with search pre-filled
+    if (!user) {
+      setAuthModalOpen(true);
+      return;
+    }
     navigate(`/papers?search=${encodeURIComponent(subject)}&level=${encodeURIComponent(level)}`);
   };
 
@@ -338,6 +341,11 @@ const Catalog = () => {
         )}
       </main>
       <Footer />
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
+        defaultTab="signin"
+      />
     </div>
   );
 };

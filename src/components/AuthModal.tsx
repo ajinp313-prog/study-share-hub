@@ -364,7 +364,11 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
     try {
       const redirectUrl = `${window.location.origin}/dashboard`;
 
+<<<<<<< HEAD
       const { data: signUpResult, error } = await supabase.auth.signUp({
+=======
+      const { data, error } = await supabase.auth.signUp({
+>>>>>>> f72b69766683dba7af341a9dfaab9dab334d0566
         email: signUpData.email,
         password: signUpData.password,
         options: {
@@ -397,6 +401,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
         return;
       }
 
+<<<<<<< HEAD
       if (signUpResult?.session) {
         toast({
           title: "Account created!",
@@ -410,6 +415,28 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
           description: "We sent you a confirmation link. Please verify your email before signing in.",
         });
         onOpenChange(false);
+=======
+      // If email confirmation is required, no active session exists yet
+      if (!data.session) {
+        toast({
+          title: "Check your email",
+          description: "Your account was created. Please verify your email, then sign in.",
+        });
+        setActiveTab("signin");
+        return;
+      }
+
+      // Update profile with additional info for confirmed/auto-confirmed signups
+      if (data.user) {
+        await supabase
+          .from("profiles")
+          .update({
+            study_level: signUpData.studyLevel,
+            subjects_of_interest: selectedSubjects,
+            career_goals: signUpData.careerGoals,
+          })
+          .eq("user_id", data.user.id);
+>>>>>>> f72b69766683dba7af341a9dfaab9dab334d0566
       }
     } catch (_err) {
       logger.error("Sign-up unexpected error", _err);

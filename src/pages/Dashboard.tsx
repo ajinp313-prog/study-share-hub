@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { REWARDS } from "@/constants/rewards";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
@@ -33,6 +34,16 @@ interface Profile {
   points: number;
 }
 
+interface DownloadRecord {
+  id: string;
+  item_id: string;
+  item_type: string;
+  item_title: string;
+  item_subject: string;
+  item_level: string;
+  created_at: string;
+}
+
 const Dashboard = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -42,6 +53,7 @@ const Dashboard = () => {
   const [daysActive, setDaysActive] = useState(1);
   const [showProfileCompletion, setShowProfileCompletion] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
+  const [recentDownloads, setRecentDownloads] = useState<DownloadRecord[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -60,10 +72,17 @@ const Dashboard = () => {
 
       if (profileData) {
         setProfile(profileData);
+<<<<<<< HEAD
 
         // Check if profile needs completion (Google sign-in users)
+=======
+        
+        // Check if profile needs completion (Google sign-in users only)
+        // Email-registered users will have mobile set by the trigger, so only show
+        // the modal when mobile is empty (indicates Google/OAuth sign-in)
+>>>>>>> f72b69766683dba7af341a9dfaab9dab334d0566
         if (!profileChecked) {
-          if (!profileData.mobile || !profileData.study_level) {
+          if (!profileData.mobile || profileData.mobile === '') {
             setShowProfileCompletion(true);
           }
           setProfileChecked(true);
@@ -92,6 +111,16 @@ const Dashboard = () => {
         .eq("user_id", user.id);
 
       setNotesUploaded(notesCount || 0);
+
+      // Fetch recent downloads
+      const { data: downloadsData } = await supabase
+        .from("download_history")
+        .select("id, item_id, item_type, item_title, item_subject, item_level, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      setRecentDownloads((downloadsData as DownloadRecord[]) || []);
     }
   }, [user]);
 
@@ -161,7 +190,7 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-8">
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -193,7 +222,11 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Upload Paper</CardTitle>
+<<<<<<< HEAD
                   <CardDescription>Share & earn 20 points</CardDescription>
+=======
+                  <CardDescription>Share & earn {REWARDS.PAPERS_UPLOAD} points</CardDescription>
+>>>>>>> f72b69766683dba7af341a9dfaab9dab334d0566
                 </div>
               </div>
             </CardHeader>
@@ -233,7 +266,11 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Upload Note</CardTitle>
+<<<<<<< HEAD
                   <CardDescription>Share & earn 25 points</CardDescription>
+=======
+                  <CardDescription>Share & earn {REWARDS.NOTES_UPLOAD} points</CardDescription>
+>>>>>>> f72b69766683dba7af341a9dfaab9dab334d0566
                 </div>
               </div>
             </CardHeader>
@@ -344,14 +381,36 @@ const Dashboard = () => {
                 <Clock className="h-5 w-5" />
                 Recent Downloads
               </CardTitle>
-              <CardDescription>Papers you've accessed</CardDescription>
+              <CardDescription>Papers & notes you've accessed</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">No downloads yet</p>
-                <p className="text-xs">Start exploring papers to see them here</p>
-              </div>
+              {recentDownloads.length > 0 ? (
+                <div className="space-y-3">
+                  {recentDownloads.map((dl) => (
+                    <div key={dl.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <div className={`p-1.5 rounded ${dl.item_type === 'paper' ? 'bg-primary/10' : 'bg-accent/10'}`}>
+                        {dl.item_type === 'paper' ? (
+                          <FileText className="h-4 w-4 text-primary" />
+                        ) : (
+                          <StickyNote className="h-4 w-4 text-accent" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{dl.item_title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {dl.item_subject} • {dl.item_level} • {new Date(dl.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">No downloads yet</p>
+                  <p className="text-xs">Start exploring papers to see them here</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

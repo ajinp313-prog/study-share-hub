@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, BookOpen, User, LogOut, Moon, Sun } from "lucide-react";
+import { Menu, X, BookOpen, User, LogOut, Moon, Sun, Download } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import {
   DropdownMenu,
@@ -129,6 +129,10 @@ const Header = () => {
                     <User className="mr-2 h-4 w-4" />
                     Dashboard
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/downloads")}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Recent Downloads
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
@@ -210,6 +214,9 @@ const Header = () => {
                   <>
                     <Button variant="ghost" className="w-full justify-center" onClick={() => { navigate("/dashboard"); setIsMenuOpen(false); }}>
                       Dashboard
+                    </Button>
+                    <Button variant="ghost" className="w-full justify-center" onClick={() => { navigate("/downloads"); setIsMenuOpen(false); }}>
+                      Recent Downloads
                     </Button>
                     <Button variant="destructive" className="w-full justify-center" onClick={handleSignOut}>
                       Sign Out

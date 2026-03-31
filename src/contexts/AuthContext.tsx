@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -24,6 +24,13 @@ export const useAuth = () => {
   return context;
 };
 
+// Derive the storage key from the project URL to avoid hardcoding
+const getStorageKey = () => {
+  const url = import.meta.env.VITE_SUPABASE_URL || "";
+  const projectId = url.replace("https://", "").split(".")[0];
+  return `sb-${projectId}-auth-token`;
+};
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -32,10 +39,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+<<<<<<< HEAD
+=======
+  const initializedRef = useRef(false);
+>>>>>>> f72b69766683dba7af341a9dfaab9dab334d0566
 
   useEffect(() => {
     let isMounted = true;
 
+<<<<<<< HEAD
     // Set up the auth state listener FIRST so we don't miss events,
     // then immediately load the existing session.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -45,6 +57,36 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(newSession?.user ?? null);
         // Once the listener fires at least once, loading is resolved.
         setLoading(false);
+=======
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        
+        if (isMounted) {
+          setSession(initialSession);
+          setUser(initialSession?.user ?? null);
+          initializedRef.current = true;
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Failed to get initial session:", error);
+        if (isMounted) {
+          initializedRef.current = true;
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    // Single subscription — no dependency on initialized state
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, newSession) => {
+        if (isMounted && initializedRef.current) {
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
+        }
+>>>>>>> f72b69766683dba7af341a9dfaab9dab334d0566
       }
     );
 
@@ -68,10 +110,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       isMounted = false;
       subscription.unsubscribe();
     };
+<<<<<<< HEAD
   }, []); // Empty deps — subscribe exactly once for the lifetime of the provider.
 
   const signOut = async () => {
     // Clear local state first to give instant UI feedback.
+=======
+  }, []); // stable deps — runs once
+
+  const signOut = async () => {
+>>>>>>> f72b69766683dba7af341a9dfaab9dab334d0566
     setSession(null);
     setUser(null);
 
@@ -80,6 +128,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } catch (error) {
       console.warn("Sign out error (session may already be expired):", error);
     }
+<<<<<<< HEAD
 
     // Derive the storage key from the configured URL to avoid hardcoding project IDs.
     try {
@@ -93,6 +142,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         .filter((k) => k.startsWith("sb-") && k.endsWith("-auth-token"))
         .forEach((k) => localStorage.removeItem(k));
     }
+=======
+    
+    // Fallback: clear auth token using derived key
+    localStorage.removeItem(getStorageKey());
+>>>>>>> f72b69766683dba7af341a9dfaab9dab334d0566
   };
 
   return (

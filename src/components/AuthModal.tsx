@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { lovable } from "@/integrations/lovable/index";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { UserPlus, LogIn, Mail, Lock, Sparkles, Phone, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { UserPlus, LogIn, Mail, Lock, Sparkles, Phone, Loader2, Eye, EyeOff, ArrowLeft, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
+import logger from "@/lib/logger";
 
 const subjects = [
   "Mathematics",
@@ -35,17 +36,17 @@ const subjects = [
   "Geography",
 ];
 
-// Validation schemas
+// Validation schemas — password minimum raised to 8 characters for production security.
 const signInSchema = z.object({
   identifier: z.string().trim().min(1, "Email or mobile number is required"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 const signUpSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
   email: z.string().trim().email("Invalid email address"),
-  mobile: z.string().trim().min(10, "Mobile number must be at least 10 digits").max(15, "Invalid mobile number").regex(/^[0-9+\-\s]+$/, "Invalid mobile number format"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  mobile: z.string().trim().min(10, "Mobile number must be at least 10 digits").max(15, "Invalid mobile number").regex(/^[0-9+\s-]+$/, "Invalid mobile number format"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
   studyLevel: z.string().min(1, "Please select your study level"),
 });
 
@@ -54,6 +55,10 @@ interface AuthModalProps {
   onOpenChange: (open: boolean) => void;
   defaultTab?: "signin" | "signup";
 }
+
+// ── Login rate-limiter constants ──────────────────────────────────────────
+const MAX_SIGN_IN_ATTEMPTS = 3;
+const LOCKOUT_SECONDS = 30;
 
 const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps) => {
   const { toast } = useToast();
@@ -68,7 +73,26 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
   const [showSignUpPassword, setShowSignUpPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [showProfileCompletion, setShowProfileCompletion] = useState(false);
-  
+
+  // ── Login rate-limit state ────────────────────────────────────────────────
+  const signInAttempts = useRef(0);
+  const lockoutUntil = useRef<number | null>(null);
+  const [lockoutCountdown, setLockoutCountdown] = useState(0);
+
+  // Countdown timer — ticks every second while a lockout is active.
+  const startLockoutCountdown = useCallback((seconds: number) => {
+    setLockoutCountdown(seconds);
+    const interval = setInterval(() => {
+      setLockoutCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
   const [signInData, setSignInData] = useState({
     identifier: "",
     password: "",
@@ -83,40 +107,33 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
     careerGoals: "",
   });
 
-  // Check if user needs to complete profile after Google sign-in
+  // Check if user needs to complete profile after Google sign-in.
+  // We do NOT create a second onAuthStateChange subscription here — we rely
+  // on the global AuthContext listener to avoid accumulating subscriptions.
   useEffect(() => {
+    let isMounted = true;
+
     const checkProfileCompletion = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("mobile, study_level")
-          .eq("user_id", user.id)
-          .single();
+      if (!user || !isMounted) return;
 
-        // If profile is incomplete (no mobile or study level), show completion modal
-        if (profile && (!profile.mobile || !profile.study_level)) {
-          setShowProfileCompletion(true);
-        }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("mobile, study_level")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profile && (!profile.mobile || !profile.study_level) && isMounted) {
+        setShowProfileCompletion(true);
       }
     };
 
-    // Listen for auth state changes to detect Google sign-in completion
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          // Reset Google loading state when sign-in completes
-          setIsGoogleLoading(false);
-          
-          // Check if this is a new Google sign-in user that needs profile completion
-          setTimeout(async () => {
-            await checkProfileCompletion();
-          }, 500);
-        }
-      }
-    );
+    // Only check on mount (for when dialog opens post-Google redirect).
+    checkProfileCompletion();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const toggleSubject = (subject: string) => {
@@ -132,14 +149,19 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
     setErrors({});
 
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
+      const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
       });
 
-      if (error) {
+      if (result.redirected) {
+        // Page is redirecting to OAuth provider
+        return;
+      }
+
+      if (result.error) {
         toast({
           title: "Google Sign-In Failed",
-          description: error.message,
+          description: result.error.message,
           variant: "destructive",
         });
         setIsGoogleLoading(false);
@@ -149,9 +171,10 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
       // Auth state change listener will handle profile completion check
       toast({
         title: "Welcome!",
-        description: "Redirecting to Google...",
+        description: "You have successfully signed in with Google.",
       });
-    } catch (error) {
+      navigate("/dashboard");
+    } catch (_err) {
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -164,6 +187,17 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
+
+    // ── Enforce lockout before even validating ────────────────────────────
+    if (lockoutUntil.current && Date.now() < lockoutUntil.current) {
+      const remaining = Math.ceil((lockoutUntil.current - Date.now()) / 1000);
+      toast({
+        title: "Too many attempts",
+        description: `Please wait ${remaining} seconds before trying again.`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     const result = signInSchema.safeParse(signInData);
     if (!result.success) {
@@ -183,16 +217,21 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
       // Check if identifier is email or phone
       const isEmail = signInData.identifier.includes("@");
       let emailToUse = signInData.identifier;
-      
+
       // If it's a phone number, look up the email using RPC function (bypasses RLS)
       if (!isEmail) {
-        const cleanedMobile = signInData.identifier.replace(/[\s\-]/g, "");
-        
+        const cleanedMobile = signInData.identifier.replace(/[\s-]/g, "");
+
         // Use the SECURITY DEFINER RPC function to get email by mobile
         const { data: emailResult, error: rpcError } = await supabase
           .rpc('get_user_email_by_mobile', { mobile_number: cleanedMobile });
-          
+
         if (rpcError || !emailResult || emailResult.length === 0) {
+          signInAttempts.current += 1;
+          if (signInAttempts.current >= MAX_SIGN_IN_ATTEMPTS) {
+            lockoutUntil.current = Date.now() + LOCKOUT_SECONDS * 1000;
+            startLockoutCountdown(LOCKOUT_SECONDS);
+          }
           toast({
             title: "Login failed",
             description: "No account found with this mobile number. Please check and try again.",
@@ -201,32 +240,42 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
           setIsLoading(false);
           return;
         }
-        
+
         // The RPC returns a table, get the first row's email
         emailToUse = emailResult[0].email;
       }
-      
+
       const { error } = await supabase.auth.signInWithPassword({
         email: emailToUse,
         password: signInData.password,
       });
 
       if (error) {
-        if (error.message.includes("Invalid login credentials")) {
+        // Increment the failed-attempt counter and enforce lockout.
+        signInAttempts.current += 1;
+        if (signInAttempts.current >= MAX_SIGN_IN_ATTEMPTS) {
+          lockoutUntil.current = Date.now() + LOCKOUT_SECONDS * 1000;
+          startLockoutCountdown(LOCKOUT_SECONDS);
           toast({
-            title: "Login failed",
-            description: "Invalid email/mobile or password. Please try again.",
+            title: "Account temporarily locked",
+            description: `Too many failed attempts. Please wait ${LOCKOUT_SECONDS} seconds.`,
             variant: "destructive",
           });
         } else {
+          const remaining = MAX_SIGN_IN_ATTEMPTS - signInAttempts.current;
           toast({
             title: "Login failed",
-            description: error.message,
+            description: `Invalid email/mobile or password. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`,
             variant: "destructive",
           });
         }
+        logger.error("Sign-in error", error.message);
         return;
       }
+
+      // Success — reset the attempt counter.
+      signInAttempts.current = 0;
+      lockoutUntil.current = null;
 
       toast({
         title: "Welcome back!",
@@ -234,7 +283,8 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
       });
       onOpenChange(false);
       navigate("/dashboard");
-    } catch (error) {
+    } catch (_err) {
+      logger.error("Sign-in unexpected error", _err);
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -244,6 +294,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
       setIsLoading(false);
     }
   };
+
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,12 +309,13 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
 
     try {
       const redirectUrl = `${window.location.origin}/reset-password`;
-      
+
       const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
         redirectTo: redirectUrl,
       });
 
       if (error) {
+        logger.error("Password reset error", error.message);
         toast({
           title: "Error",
           description: error.message,
@@ -278,7 +330,8 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
       });
       setShowForgotPassword(false);
       setForgotPasswordEmail("");
-    } catch (error) {
+    } catch (_err) {
+      logger.error("Password reset unexpected error", _err);
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -288,6 +341,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
       setIsLoading(false);
     }
   };
+
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,7 +364,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
     try {
       const redirectUrl = `${window.location.origin}/dashboard`;
 
-      const { error } = await supabase.auth.signUp({
+      const { data: signUpResult, error } = await supabase.auth.signUp({
         email: signUpData.email,
         password: signUpData.password,
         options: {
@@ -326,6 +380,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
       });
 
       if (error) {
+        logger.error("Sign-up error", error.message);
         if (error.message.includes("already registered")) {
           toast({
             title: "Account exists",
@@ -342,23 +397,22 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
         return;
       }
 
-      // Update profile with additional info
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("profiles").update({
-          study_level: signUpData.studyLevel,
-          subjects_of_interest: selectedSubjects,
-          career_goals: signUpData.careerGoals,
-        }).eq("user_id", user.id);
+      if (signUpResult?.session) {
+        toast({
+          title: "Account created!",
+          description: "Welcome to Study Share. Start exploring papers!",
+        });
+        onOpenChange(false);
+        navigate("/dashboard");
+      } else {
+        toast({
+          title: "Check your email!",
+          description: "We sent you a confirmation link. Please verify your email before signing in.",
+        });
+        onOpenChange(false);
       }
-
-      toast({
-        title: "Account created!",
-        description: "Welcome to Study Share. Start exploring papers!",
-      });
-      onOpenChange(false);
-      navigate("/dashboard");
-    } catch (error) {
+    } catch (_err) {
+      logger.error("Sign-up unexpected error", _err);
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -368,6 +422,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
       setIsLoading(false);
     }
   };
+
 
   // Google Icon as inline SVG to avoid ref issues
   const googleIconSvg = (
@@ -401,8 +456,8 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
               {showForgotPassword ? "Reset Password" : "Welcome to Study Share"}
             </DialogTitle>
             <DialogDescription>
-              {showForgotPassword 
-                ? "Enter your email to receive a password reset link" 
+              {showForgotPassword
+                ? "Enter your email to receive a password reset link"
                 : "Access thousands of free question papers"}
             </DialogDescription>
           </DialogHeader>
@@ -447,323 +502,327 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
             </form>
           ) : (
 
-          <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as "signin" | "signup"); setErrors({}); }} className="mt-4">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin" className="gap-2">
-                <LogIn className="h-4 w-4" />
-                Sign In
-              </TabsTrigger>
-              <TabsTrigger value="signup" className="gap-2">
-                <UserPlus className="h-4 w-4" />
-                Sign Up
-              </TabsTrigger>
-            </TabsList>
+            <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as "signin" | "signup"); setErrors({}); }} className="mt-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="signin" className="gap-2">
+                  <LogIn className="h-4 w-4" />
+                  Sign In
+                </TabsTrigger>
+                <TabsTrigger value="signup" className="gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Sign Up
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Sign In Tab */}
-            <TabsContent value="signin" className="mt-6">
-              <div className="space-y-4">
-                {/* Google Sign-In Button */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  className="w-full gap-3 border-border hover:bg-secondary/50"
-                  onClick={handleGoogleSignIn}
-                  disabled={isGoogleLoading || isLoading}
-                >
-                  {isGoogleLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    googleIconSvg
-                  )}
-                  Continue with Google
-                </Button>
-
-                {/* Divider */}
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-border" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or continue with email
-                    </span>
-                  </div>
-                </div>
-
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-identifier">Email or Mobile Number</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="signin-identifier"
-                        type="text"
-                        placeholder="Email or mobile number"
-                        className="pl-10"
-                        value={signInData.identifier}
-                        onChange={(e) => setSignInData({ ...signInData, identifier: e.target.value })}
-                        required
-                        disabled={isLoading || isGoogleLoading}
-                      />
-                    </div>
-                    {errors.identifier && <p className="text-sm text-destructive">{errors.identifier}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="signin-password"
-                        type={showSignInPassword ? "text" : "password"}
-                        placeholder="Enter your password"
-                        className="pl-10 pr-10"
-                        value={signInData.password}
-                        onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
-                        required
-                        disabled={isLoading || isGoogleLoading}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowSignInPassword(!showSignInPassword)}
-                        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
-                        tabIndex={-1}
-                      >
-                        {showSignInPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                    {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox id="remember" />
-                      <span className="text-muted-foreground">Remember me</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => { setShowForgotPassword(true); setErrors({}); }}
-                      className="text-primary hover:underline"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-
-                  <Button type="submit" size="lg" className="w-full gap-2" disabled={isLoading || isGoogleLoading}>
-                    {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+              {/* Sign In Tab */}
+              <TabsContent value="signin" className="mt-6">
+                <div className="space-y-4">
+                  {/* Google Sign-In Button */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="w-full gap-3 border-border hover:bg-secondary/50"
+                    onClick={handleGoogleSignIn}
+                    disabled={isGoogleLoading || isLoading}
+                  >
+                    {isGoogleLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
-                      <LogIn className="h-4 w-4" />
+                      googleIconSvg
                     )}
-                    Sign In
+                    Continue with Google
                   </Button>
 
-                  <p className="text-center text-sm text-muted-foreground">
-                    Don't have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={() => { setActiveTab("signup"); setErrors({}); }}
-                      className="text-primary hover:underline font-medium"
-                    >
-                      Sign up for free
-                    </button>
-                  </p>
-                </form>
-              </div>
-            </TabsContent>
-
-            {/* Sign Up Tab */}
-            <TabsContent value="signup" className="mt-6">
-              <div className="space-y-4">
-                {/* Google Sign-Up Button */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  className="w-full gap-3 border-border hover:bg-secondary/50"
-                  onClick={handleGoogleSignIn}
-                  disabled={isGoogleLoading || isLoading}
-                >
-                  {isGoogleLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    googleIconSvg
-                  )}
-                  Sign up with Google
-                </Button>
-
-                {/* Divider */}
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-border" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or sign up with email
-                    </span>
-                  </div>
-                </div>
-
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name <span className="text-destructive">*</span></Label>
-                    <Input
-                      id="signup-name"
-                      placeholder="Enter your name"
-                      value={signUpData.name}
-                      onChange={(e) => setSignUpData({ ...signUpData, name: e.target.value })}
-                      required
-                      disabled={isLoading || isGoogleLoading}
-                    />
-                    {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+                  {/* Divider */}
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-border" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        Or continue with email
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <form onSubmit={handleSignIn} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="signup-email">Email Address <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="signin-identifier">Email or Mobile Number</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
-                          id="signup-email"
-                          type="email"
-                          placeholder="you@example.com"
+                          id="signin-identifier"
+                          type="text"
+                          placeholder="Email or mobile number"
                           className="pl-10"
-                          value={signUpData.email}
-                          onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
+                          value={signInData.identifier}
+                          onChange={(e) => setSignInData({ ...signInData, identifier: e.target.value })}
                           required
                           disabled={isLoading || isGoogleLoading}
                         />
                       </div>
-                      {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                      {errors.identifier && <p className="text-sm text-destructive">{errors.identifier}</p>}
                     </div>
+
                     <div className="space-y-2">
-                      <Label htmlFor="signup-mobile">Mobile Number <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="signin-password">Password</Label>
                       <div className="relative">
-                        <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
-                          id="signup-mobile"
-                          type="tel"
-                          placeholder="+91 9876543210"
-                          className="pl-10"
-                          value={signUpData.mobile}
-                          onChange={(e) => setSignUpData({ ...signUpData, mobile: e.target.value })}
+                          id="signin-password"
+                          type={showSignInPassword ? "text" : "password"}
+                          placeholder="Enter your password"
+                          className="pl-10 pr-10"
+                          value={signInData.password}
+                          onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
                           required
                           disabled={isLoading || isGoogleLoading}
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowSignInPassword(!showSignInPassword)}
+                          className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
+                          tabIndex={-1}
+                        >
+                          {showSignInPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                       </div>
-                      {errors.mobile && <p className="text-sm text-destructive">{errors.mobile}</p>}
+                      {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+                    </div>
+
+                    <div className="flex items-center justify-end text-sm">
+                      <button
+                        type="button"
+                        onClick={() => { setShowForgotPassword(true); setErrors({}); }}
+                        className="text-primary hover:underline"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+
+                    {/* Lockout warning banner */}
+                    {lockoutCountdown > 0 && (
+                      <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                        <ShieldAlert className="h-4 w-4 shrink-0" />
+                        <span>Too many attempts. Try again in <strong>{lockoutCountdown}s</strong>.</span>
+                      </div>
+                    )}
+
+                    <Button type="submit" size="lg" className="w-full gap-2" disabled={isLoading || isGoogleLoading || lockoutCountdown > 0}>
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <LogIn className="h-4 w-4" />
+                      )}
+                      Sign In
+                    </Button>
+
+                    <p className="text-center text-sm text-muted-foreground">
+                      Don't have an account?{" "}
+                      <button
+                        type="button"
+                        onClick={() => { setActiveTab("signup"); setErrors({}); }}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        Sign up for free
+                      </button>
+                    </p>
+                  </form>
+                </div>
+              </TabsContent>
+
+              {/* Sign Up Tab */}
+              <TabsContent value="signup" className="mt-6">
+                <div className="space-y-4">
+                  {/* Google Sign-Up Button */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="w-full gap-3 border-border hover:bg-secondary/50"
+                    onClick={handleGoogleSignIn}
+                    disabled={isGoogleLoading || isLoading}
+                  >
+                    {isGoogleLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      googleIconSvg
+                    )}
+                    Sign up with Google
+                  </Button>
+
+                  {/* Divider */}
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-border" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        Or sign up with email
+                      </span>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password <span className="text-destructive">*</span></Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <form onSubmit={handleSignUp} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-name">Full Name <span className="text-destructive">*</span></Label>
                       <Input
-                        id="signup-password"
-                        type={showSignUpPassword ? "text" : "password"}
-                        placeholder="Create a password (min 6 characters)"
-                        className="pl-10 pr-10"
-                        value={signUpData.password}
-                        onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
+                        id="signup-name"
+                        placeholder="Enter your name"
+                        value={signUpData.name}
+                        onChange={(e) => setSignUpData({ ...signUpData, name: e.target.value })}
                         required
                         disabled={isLoading || isGoogleLoading}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowSignUpPassword(!showSignUpPassword)}
-                        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
-                        tabIndex={-1}
-                      >
-                        {showSignUpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
+                      {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
                     </div>
-                    <PasswordStrengthIndicator password={signUpData.password} />
-                    {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="studyLevel">Study Level <span className="text-destructive">*</span></Label>
-                    <Select
-                      value={signUpData.studyLevel}
-                      onValueChange={(value) => setSignUpData({ ...signUpData, studyLevel: value })}
-                      disabled={isLoading || isGoogleLoading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your study level" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border border-border z-50">
-                        <SelectItem value="10th">10th Grade / Secondary</SelectItem>
-                        <SelectItem value="+1">+1 / 11th Grade</SelectItem>
-                        <SelectItem value="+2">+2 / 12th Grade</SelectItem>
-                        <SelectItem value="Undergraduate">Undergraduate / Bachelor's</SelectItem>
-                        <SelectItem value="Graduate">Graduate</SelectItem>
-                        <SelectItem value="Masters">Postgraduate / Master's</SelectItem>
-                        <SelectItem value="Engineering">Engineering</SelectItem>
-                        <SelectItem value="PhD">PhD / Doctoral</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {errors.studyLevel && <p className="text-sm text-destructive">{errors.studyLevel}</p>}
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label>Subjects of Interest</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {subjects.map((subject) => (
-                        <div key={subject} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`signup-${subject}`}
-                            checked={selectedSubjects.includes(subject)}
-                            onCheckedChange={() => toggleSubject(subject)}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-email">Email Address <span className="text-destructive">*</span></Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="signup-email"
+                            type="email"
+                            placeholder="you@example.com"
+                            className="pl-10"
+                            value={signUpData.email}
+                            onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
+                            required
                             disabled={isLoading || isGoogleLoading}
                           />
-                          <label
-                            htmlFor={`signup-${subject}`}
-                            className="text-sm text-foreground cursor-pointer"
-                          >
-                            {subject}
-                          </label>
                         </div>
-                      ))}
+                        {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-mobile">Mobile Number <span className="text-destructive">*</span></Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="signup-mobile"
+                            type="tel"
+                            placeholder="+91 9876543210"
+                            className="pl-10"
+                            value={signUpData.mobile}
+                            onChange={(e) => setSignUpData({ ...signUpData, mobile: e.target.value })}
+                            required
+                            disabled={isLoading || isGoogleLoading}
+                          />
+                        </div>
+                        {errors.mobile && <p className="text-sm text-destructive">{errors.mobile}</p>}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="careerGoals">Future Career Goals (Optional)</Label>
-                    <Textarea
-                      id="careerGoals"
-                      placeholder="Tell us about your career aspirations..."
-                      value={signUpData.careerGoals}
-                      onChange={(e) => setSignUpData({ ...signUpData, careerGoals: e.target.value })}
-                      className="min-h-[80px]"
-                      disabled={isLoading || isGoogleLoading}
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password">Password <span className="text-destructive">*</span></Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="signup-password"
+                          type={showSignUpPassword ? "text" : "password"}
+                          placeholder="Create a password (min 8 characters)"
+                          className="pl-10 pr-10"
+                          value={signUpData.password}
+                          onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
+                          required
+                          disabled={isLoading || isGoogleLoading}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSignUpPassword(!showSignUpPassword)}
+                          className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
+                          tabIndex={-1}
+                        >
+                          {showSignUpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      <PasswordStrengthIndicator password={signUpData.password} />
+                      {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+                    </div>
 
-                  <Button type="submit" size="lg" className="w-full gap-2" disabled={isLoading || isGoogleLoading}>
-                    {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <UserPlus className="h-4 w-4" />
-                    )}
-                    Create Free Account
-                  </Button>
+                    <div className="space-y-2">
+                      <Label htmlFor="studyLevel">Study Level <span className="text-destructive">*</span></Label>
+                      <Select
+                        value={signUpData.studyLevel}
+                        onValueChange={(value) => setSignUpData({ ...signUpData, studyLevel: value })}
+                        disabled={isLoading || isGoogleLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your study level" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border border-border z-50">
+                          <SelectItem value="10th">10th Grade / Secondary</SelectItem>
+                          <SelectItem value="+1">+1 / 11th Grade</SelectItem>
+                          <SelectItem value="+2">+2 / 12th Grade</SelectItem>
+                          <SelectItem value="Undergraduate">Undergraduate / Bachelor's</SelectItem>
+                          <SelectItem value="Graduate">Graduate</SelectItem>
+                          <SelectItem value="Masters">Postgraduate / Master's</SelectItem>
+                          <SelectItem value="Engineering">Engineering</SelectItem>
+                          <SelectItem value="PhD">PhD / Doctoral</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {errors.studyLevel && <p className="text-sm text-destructive">{errors.studyLevel}</p>}
+                    </div>
 
-                  <p className="text-center text-sm text-muted-foreground">
-                    Already have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={() => { setActiveTab("signin"); setErrors({}); }}
-                      className="text-primary hover:underline font-medium"
-                    >
-                      Sign in
-                    </button>
-                  </p>
-                </form>
-              </div>
-            </TabsContent>
-          </Tabs>
+                    <div className="space-y-3">
+                      <Label>Subjects of Interest</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {subjects.map((subject) => (
+                          <div key={subject} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`signup-${subject}`}
+                              checked={selectedSubjects.includes(subject)}
+                              onCheckedChange={() => toggleSubject(subject)}
+                              disabled={isLoading || isGoogleLoading}
+                            />
+                            <label
+                              htmlFor={`signup-${subject}`}
+                              className="text-sm text-foreground cursor-pointer"
+                            >
+                              {subject}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="careerGoals">Future Career Goals (Optional)</Label>
+                      <Textarea
+                        id="careerGoals"
+                        placeholder="Tell us about your career aspirations..."
+                        value={signUpData.careerGoals}
+                        onChange={(e) => setSignUpData({ ...signUpData, careerGoals: e.target.value })}
+                        className="min-h-[80px]"
+                        disabled={isLoading || isGoogleLoading}
+                      />
+                    </div>
+
+                    <Button type="submit" size="lg" className="w-full gap-2" disabled={isLoading || isGoogleLoading}>
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <UserPlus className="h-4 w-4" />
+                      )}
+                      Create Free Account
+                    </Button>
+
+                    <p className="text-center text-sm text-muted-foreground">
+                      Already have an account?{" "}
+                      <button
+                        type="button"
+                        onClick={() => { setActiveTab("signin"); setErrors({}); }}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        Sign in
+                      </button>
+                    </p>
+                  </form>
+                </div>
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>

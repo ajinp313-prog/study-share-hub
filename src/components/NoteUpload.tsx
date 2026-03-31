@@ -25,6 +25,8 @@ import { toast } from "sonner";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { UploadProgress } from "@/components/ui/upload-progress";
 import { PDFFilePreview } from "@/components/PDFFilePreview";
+import { sanitizeFileName, isPdfMagicBytes } from "@/lib/sanitize";
+import logger from "@/lib/logger";
 
 // Subjects mapped by academic level
 const subjectsByLevel: Record<string, string[]> = {
@@ -187,7 +189,7 @@ export const NoteUpload = () => {
     setFormData({ ...formData, level: value, subject: "" });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       if (selectedFile.type !== "application/pdf") {
@@ -198,17 +200,25 @@ export const NoteUpload = () => {
         toast.error("File size must be less than 10MB");
         return;
       }
+      // Validate magic bytes (%PDF) — prevents renamed non-PDF files.
+      const validPdf = await isPdfMagicBytes(selectedFile);
+      if (!validPdf) {
+        toast.error("Invalid PDF file. Please upload a genuine PDF document.");
+        return;
+      }
       setFile(selectedFile);
     }
   };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !file) return;
 
     try {
-      // Upload file to storage with progress tracking
-      const filePath = `${user.id}/${Date.now()}_${file.name}`;
+      // Sanitize file name to prevent path traversal and storage-path injection.
+      const safeFileName = sanitizeFileName(file.name);
+      const filePath = `${user.id}/${Date.now()}_${safeFileName}`;
       const { error: uploadError } = await uploadFile("notes", filePath, file);
 
       if (uploadError) throw uploadError;
@@ -242,11 +252,12 @@ export const NoteUpload = () => {
       }
       setOpen(false);
       resetForm();
-    } catch (error: any) {
-      console.error("Upload error:", error);
-      toast.error(error.message || "Failed to upload note");
+    } catch (error: unknown) {
+      logger.error("Note upload error", error);
+      toast.error(error instanceof Error ? error.message : "Failed to upload note");
     }
   };
+
 
   const resetForm = () => {
     setFile(null);
@@ -312,6 +323,7 @@ export const NoteUpload = () => {
                 setFormData({ ...formData, title: e.target.value })
               }
               required
+              maxLength={200}
             />
           </div>
 
@@ -325,6 +337,7 @@ export const NoteUpload = () => {
                 setFormData({ ...formData, description: e.target.value })
               }
               rows={2}
+              maxLength={1000}
             />
           </div>
 

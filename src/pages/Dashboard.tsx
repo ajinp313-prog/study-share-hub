@@ -12,11 +12,11 @@ import RewardsComingSoon from "@/components/RewardsComingSoon";
 import ProfileEditModal from "@/components/ProfileEditModal";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  BookOpen, 
-  Award, 
-  FileText, 
-  TrendingUp, 
+import {
+  BookOpen,
+  Award,
+  FileText,
+  TrendingUp,
   Star,
   Clock,
   Upload,
@@ -57,10 +57,10 @@ const Dashboard = () => {
         .select("name, mobile, study_level, subjects_of_interest, points, created_at")
         .eq("user_id", user.id)
         .maybeSingle();
-      
+
       if (profileData) {
         setProfile(profileData);
-        
+
         // Check if profile needs completion (Google sign-in users)
         if (!profileChecked) {
           if (!profileData.mobile || !profileData.study_level) {
@@ -68,7 +68,7 @@ const Dashboard = () => {
           }
           setProfileChecked(true);
         }
-        
+
         // Calculate days active
         const createdDate = new Date(profileData.created_at);
         const now = new Date();
@@ -82,7 +82,7 @@ const Dashboard = () => {
         .from("papers")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id);
-      
+
       setPapersUploaded(papersCount || 0);
 
       // Fetch notes count
@@ -90,7 +90,7 @@ const Dashboard = () => {
         .from("notes")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id);
-      
+
       setNotesUploaded(notesCount || 0);
     }
   }, [user]);
@@ -129,15 +129,15 @@ const Dashboard = () => {
               Welcome back, {profile?.name || "Student"}! 👋
             </h1>
             <p className="text-muted-foreground">
-              {profile?.study_level 
+              {profile?.study_level
                 ? `${profile.study_level} Student`
                 : "Ready to explore question papers?"}
             </p>
           </div>
           {profile && user && (
-            <ProfileEditModal 
-              profile={profile} 
-              userId={user.id} 
+            <ProfileEditModal
+              profile={profile}
+              userId={user.id}
               onProfileUpdated={fetchUserData}
             />
           )}
@@ -193,7 +193,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Upload Paper</CardTitle>
-                  <CardDescription>Share & earn 50 points</CardDescription>
+                  <CardDescription>Share & earn 20 points</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -233,7 +233,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Upload Note</CardTitle>
-                  <CardDescription>Share & earn 50 points</CardDescription>
+                  <CardDescription>Share & earn 25 points</CardDescription>
                 </div>
               </div>
             </CardHeader>

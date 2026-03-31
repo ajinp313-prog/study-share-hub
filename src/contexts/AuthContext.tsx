@@ -9,11 +9,11 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({
+export const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
-  signOut: async () => {},
+  signOut: async () => { },
 });
 
 export const useAuth = () => {
@@ -32,65 +32,67 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    // Prevent race condition by tracking initialization state
     let isMounted = true;
 
-    // Get existing session FIRST to avoid race condition
-    const initializeAuth = async () => {
-      try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        
-        if (isMounted) {
-          setSession(initialSession);
-          setUser(initialSession?.user ?? null);
-          setInitialized(true);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Failed to get initial session:", error);
-        if (isMounted) {
-          setInitialized(true);
-          setLoading(false);
-        }
-      }
-    };
-
-    initializeAuth();
-
-    // Set up auth state listener AFTER getting initial session
+    // Set up the auth state listener FIRST so we don't miss events,
+    // then immediately load the existing session.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, newSession) => {
-        // Only process auth changes after initialization to avoid race condition
-        if (isMounted && initialized) {
-          setSession(newSession);
-          setUser(newSession?.user ?? null);
-        }
+        if (!isMounted) return;
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+        // Once the listener fires at least once, loading is resolved.
+        setLoading(false);
       }
     );
+
+    // Trigger an immediate session load. The onAuthStateChange callback
+    // above will receive the INITIAL_SESSION event and resolve loading.
+    supabase.auth.getSession().then(({ data: { session: initialSession }, error }) => {
+      if (!isMounted) return;
+      if (error) {
+        console.error("Failed to get initial session:", error);
+        setLoading(false);
+        return;
+      }
+      // If onAuthStateChange hasn't fired yet, apply the session now so the
+      // UI doesn't flash unauthenticated for users with an existing session.
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
+      setLoading(false);
+    });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [initialized]);
+  }, []); // Empty deps — subscribe exactly once for the lifetime of the provider.
 
   const signOut = async () => {
-    // Clear local state first
+    // Clear local state first to give instant UI feedback.
     setSession(null);
     setUser(null);
-    
+
     try {
-      await supabase.auth.signOut({ scope: 'local' });
+      await supabase.auth.signOut({ scope: "local" });
     } catch (error) {
       console.warn("Sign out error (session may already be expired):", error);
     }
-    
-    // Fallback: manually clear Supabase auth token from localStorage
-    const storageKey = `sb-styrpqafgeexrhlxegkl-auth-token`;
-    localStorage.removeItem(storageKey);
+
+    // Derive the storage key from the configured URL to avoid hardcoding project IDs.
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+      const storageKey = `sb-${projectRef}-auth-token`;
+      localStorage.removeItem(storageKey);
+    } catch {
+      // If URL parsing fails, fall back to clearing all sb- prefixed keys.
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("sb-") && k.endsWith("-auth-token"))
+        .forEach((k) => localStorage.removeItem(k));
+    }
   };
 
   return (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +56,42 @@ const RegistrationForm = () => {
     careerGoals: "",
   });
 
+  // Check if user needs to complete profile after Google sign-up
+  useEffect(() => {
+    const checkProfileCompletion = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("mobile, study_level")
+          .eq("user_id", user.id)
+          .single();
+
+        // If profile is incomplete (no mobile or study level), show completion modal
+        if (profile && (!profile.mobile || !profile.study_level)) {
+          setShowProfileCompletion(true);
+        }
+      }
+    };
+
+    // Listen for auth state changes to detect Google sign-up completion
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          // Reset Google loading state when sign-up completes
+          setIsGoogleLoading(false);
+          
+          // Check if this is a new Google sign-up user that needs profile completion
+          setTimeout(async () => {
+            await checkProfileCompletion();
+          }, 500);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const toggleSubject = (subject: string) => {
     setSelectedSubjects((prev) =>
       prev.includes(subject)
@@ -87,25 +123,12 @@ const RegistrationForm = () => {
         return;
       }
 
-      // Check if profile needs completion
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("mobile, study_level")
-          .eq("user_id", user.id)
-          .single();
-
-        if (profile && (!profile.mobile || !profile.study_level)) {
-          setShowProfileCompletion(true);
-        } else {
-          toast({
-            title: "Welcome!",
-            description: "You have successfully signed in with Google.",
-          });
-          navigate("/dashboard");
-        }
-      }
+      // Auth state change listener will handle profile completion check
+      toast({
+        title: "Welcome!",
+        description: "You have successfully signed in with Google.",
+      });
+      navigate("/dashboard");
     } catch (error) {
       toast({
         title: "Error",

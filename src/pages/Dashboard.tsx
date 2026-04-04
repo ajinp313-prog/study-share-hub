@@ -72,15 +72,11 @@ const Dashboard = () => {
 
       if (profileData) {
         setProfile(profileData);
-<<<<<<< HEAD
 
-        // Check if profile needs completion (Google sign-in users)
-=======
-        
-        // Check if profile needs completion (Google sign-in users only)
-        // Email-registered users will have mobile set by the trigger, so only show
-        // the modal when mobile is empty (indicates Google/OAuth sign-in)
->>>>>>> f72b69766683dba7af341a9dfaab9dab334d0566
+        // Check if profile needs completion (Google sign-in users only).
+        // Email-registered users will have mobile set by the trigger,
+        // so only show the modal when mobile is empty (OAuth sign-in).
+
         if (!profileChecked) {
           if (!profileData.mobile || profileData.mobile === '') {
             setShowProfileCompletion(true);
@@ -222,11 +218,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Upload Paper</CardTitle>
-<<<<<<< HEAD
-                  <CardDescription>Share & earn 20 points</CardDescription>
-=======
                   <CardDescription>Share & earn {REWARDS.PAPERS_UPLOAD} points</CardDescription>
->>>>>>> f72b69766683dba7af341a9dfaab9dab334d0566
                 </div>
               </div>
             </CardHeader>
@@ -266,11 +258,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Upload Note</CardTitle>
-<<<<<<< HEAD
-                  <CardDescription>Share & earn 25 points</CardDescription>
-=======
                   <CardDescription>Share & earn {REWARDS.NOTES_UPLOAD} points</CardDescription>
->>>>>>> f72b69766683dba7af341a9dfaab9dab334d0566
                 </div>
               </div>
             </CardHeader>

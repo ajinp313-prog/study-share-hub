@@ -29,13 +29,14 @@ export default defineConfig(({ mode }) => ({
       "Content-Security-Policy": [
         "default-src 'self'",
         // React + Vite HMR need 'unsafe-eval' in dev; remove in prod.
-        mode === "development" ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self'",
+        mode === "development" ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net" : "script-src 'self' https://cdn.jsdelivr.net",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",
-        // Allow connections to Supabase and Google OAuth.
-        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com",
-        "frame-src 'none'",
+        // Allow connections to Supabase (storage + auth), Google OAuth, and blob: URLs (PDF.js uses them internally).
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com blob:",
+        // Allow blob: frames so PDFFilePreview iframe and PDF.js can render.
+        "frame-src 'self' blob:",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",

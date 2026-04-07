@@ -21,34 +21,29 @@ export const useSignedUrl = () => {
     try {
       const { bucket, filePath, itemId } = params;
 
-      // Check if the item exists and if the user is the owner or it is approved
-      const tableName = bucket === "papers" ? "papers" : "notes";
-      const { data: item, error: dbError } = await supabase
-        .from(tableName)
-        .select("id, status, user_id")
-        .eq("id", itemId)
-        .single();
+      // Get the current session token to pass to the Edge Function
+      const { data: { session } } = await supabase.auth.getSession();
 
-      if (dbError || !item) {
-        return { signedUrl: null, error: "Item not found", loading: false };
+      // Call the Edge Function which uses the service role key to create signed URLs
+      // (the anon key cannot create signed URLs for private buckets)
+      const { data, error } = await supabase.functions.invoke("get-signed-url", {
+        body: { bucket, filePath, itemId },
+        headers: session?.access_token
+          ? { Authorization: `Bearer ${session.access_token}` }
+          : {},
+      });
+
+      if (error) {
+        console.error("Edge Function error:", error);
+        return { signedUrl: null, error: "Failed to get download URL", loading: false };
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      const isOwner = user && item.user_id === user.id;
-      const isApproved = item.status === "approved";
-
-      if (!isApproved && !isOwner) {
-        return { signedUrl: null, error: "This file is pending approval and cannot be previewed yet", loading: false };
+      if (data?.error) {
+        return { signedUrl: null, error: data.error, loading: false };
       }
 
-      // Generate signed URL directly via Supabase Storage (1 hour expiry)
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .createSignedUrl(filePath, 3600);
-
-      if (error || !data?.signedUrl) {
-        console.error("Error getting signed URL:", error);
-        return { signedUrl: null, error: error?.message ?? "Failed to get download URL", loading: false };
+      if (!data?.signedUrl) {
+        return { signedUrl: null, error: "Failed to get download URL", loading: false };
       }
 
       return { signedUrl: data.signedUrl, error: null, loading: false };
@@ -62,3 +57,5 @@ export const useSignedUrl = () => {
 
   return { getSignedUrl, loading };
 };
+
+

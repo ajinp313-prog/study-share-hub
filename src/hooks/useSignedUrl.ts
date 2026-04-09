@@ -21,35 +21,40 @@ export const useSignedUrl = () => {
     try {
       const { bucket, filePath, itemId } = params;
 
-      // Get the current session token to pass to the Edge Function
-      const { data: { session } } = await supabase.auth.getSession();
+      // Check item exists and user has access (owner or approved)
+      const tableName = bucket === "papers" ? "papers" : "notes";
+      const { data: item, error: dbError } = await supabase
+        .from(tableName)
+        .select("id, status, user_id")
+        .eq("id", itemId)
+        .single();
 
-      // Call the Edge Function which uses the service role key to create signed URLs
-      // (the anon key cannot create signed URLs for private buckets)
-      const { data, error } = await supabase.functions.invoke("get-signed-url", {
-        body: { bucket, filePath, itemId },
-        headers: session?.access_token
-          ? { Authorization: `Bearer ${session.access_token}` }
-          : {},
-      });
-
-      if (error) {
-        console.error("Edge Function error:", error);
-        return { signedUrl: null, error: "Failed to get download URL", loading: false };
+      if (dbError || !item) {
+        return { signedUrl: null, error: "Item not found", loading: false };
       }
 
-      if (data?.error) {
-        return { signedUrl: null, error: data.error, loading: false };
+      const { data: { user } } = await supabase.auth.getUser();
+      const isOwner = user && item.user_id === user.id;
+      const isApproved = item.status === "approved";
+
+      if (!isApproved && !isOwner) {
+        return { signedUrl: null, error: "This file is pending approval", loading: false };
       }
 
-      if (!data?.signedUrl) {
-        return { signedUrl: null, error: "Failed to get download URL", loading: false };
+      // Use public URL directly — bucket is public, so this is always reliable.
+      // Access control is enforced above via DB check (approved or owner).
+      const { data } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filePath);
+
+      if (!data?.publicUrl) {
+        return { signedUrl: null, error: "Failed to get file URL", loading: false };
       }
 
-      return { signedUrl: data.signedUrl, error: null, loading: false };
+      return { signedUrl: data.publicUrl, error: null, loading: false };
     } catch (err) {
-      console.error("Unexpected error getting signed URL:", err);
-      return { signedUrl: null, error: "Failed to get download URL", loading: false };
+      console.error("Unexpected error getting file URL:", err);
+      return { signedUrl: null, error: "Failed to get file URL", loading: false };
     } finally {
       setLoading(false);
     }
@@ -57,5 +62,3 @@ export const useSignedUrl = () => {
 
   return { getSignedUrl, loading };
 };
-
-

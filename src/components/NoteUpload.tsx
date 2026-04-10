@@ -28,6 +28,7 @@ import { UploadProgress } from "@/components/ui/upload-progress";
 import { PDFFilePreview } from "@/components/PDFFilePreview";
 import { sanitizeFileName, isPdfMagicBytes } from "@/lib/sanitize";
 import logger from "@/lib/logger";
+import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType } from "@/constants/education";
 
 // Subjects mapped by academic level
 const subjectsByLevel: Record<string, string[]> = {
@@ -152,16 +153,7 @@ const subjectsByLevel: Record<string, string[]> = {
   ],
 };
 
-const levels = [
-  { value: "10th", label: "10th Grade / Secondary" },
-  { value: "+1", label: "+1 / 11th Grade" },
-  { value: "+2", label: "+2 / 12th Grade" },
-  { value: "Undergraduate", label: "Undergraduate / Bachelor's" },
-  { value: "Graduate", label: "Graduate" },
-  { value: "Masters", label: "Postgraduate / Master's" },
-  { value: "Engineering", label: "Engineering" },
-  { value: "PhD", label: "PhD / Doctoral" },
-];
+const levels = ALL_LEVELS.map(level => ({ value: level, label: level }));
 
 const POINTS_PER_UPLOAD = REWARDS.NOTES_UPLOAD;
 
@@ -185,9 +177,13 @@ export const NoteUpload = () => {
     return subjectsByLevel[formData.level] || [];
   }, [formData.level]);
 
+  const institutionType = getInstitutionType(formData.level);
+
   const handleLevelChange = (value: string) => {
-    // Reset subject when level changes
-    setFormData({ ...formData, level: value, subject: "" });
+    const oldType = getInstitutionType(formData.level);
+    const newType = getInstitutionType(value);
+    const newUniversity = oldType !== newType ? "" : formData.university;
+    setFormData({ ...formData, level: value, subject: "", university: newUniversity });
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -401,15 +397,28 @@ export const NoteUpload = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="university">University/School</Label>
-              <Input
-                id="university"
-                placeholder="e.g., MIT"
+              <Label htmlFor="university">
+                {institutionType === "school" ? "Education Board" : "University"} *
+              </Label>
+              <Select
                 value={formData.university}
-                onChange={(e) =>
-                  setFormData({ ...formData, university: e.target.value })
+                onValueChange={(value) =>
+                  setFormData({ ...formData, university: value })
                 }
-              />
+                disabled={!formData.level}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={!formData.level ? "Select Level First" : `Select ${institutionType === 'school' ? 'Board' : 'University'}`} />
+                </SelectTrigger>
+                <SelectContent className="bg-background border border-border z-50">
+                  {formData.level && (institutionType === "school" ? BOARDS : UNIVERSITIES).map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType } from "@/constants/education";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { Card, CardContent } from "@/components/ui/card";
@@ -163,18 +164,6 @@ const subjectsByLevel: Record<string, string[]> = {
   ],
 };
 
-const levels = [
-  { value: "all", label: "All Levels" },
-  { value: "10th", label: "10th Grade" },
-  { value: "+1", label: "+1 / 11th Grade" },
-  { value: "+2", label: "+2 / 12th Grade" },
-  { value: "Undergraduate", label: "Undergraduate" },
-  { value: "Graduate", label: "Graduate" },
-  { value: "Masters", label: "Masters" },
-  { value: "Engineering", label: "Engineering" },
-  { value: "PhD", label: "PhD" },
-];
-
 const PAGE_SIZE = 20;
 
 const BrowseNotes = () => {
@@ -187,7 +176,10 @@ const BrowseNotes = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("All Subjects");
   const [levelFilter, setLevelFilter] = useState("all");
+  const [universityFilter, setUniversityFilter] = useState("all");
   const [downloading, setDownloading] = useState<string | null>(null);
+
+  const institutionType = getInstitutionType(levelFilter);
   const [viewing, setViewing] = useState<string | null>(null);
 
   // PDF Preview Modal state
@@ -217,7 +209,7 @@ const BrowseNotes = () => {
 
   useEffect(() => {
     fetchNotes(true);
-  }, [subjectFilter, levelFilter]);
+  }, [subjectFilter, levelFilter, universityFilter]);
 
   const fetchNotes = async (reset = false) => {
     if (reset) {
@@ -243,6 +235,10 @@ const BrowseNotes = () => {
 
     if (levelFilter !== "all") {
       query = query.eq("level", levelFilter);
+    }
+
+    if (universityFilter !== "all") {
+      query = query.eq("university", universityFilter);
     }
 
     const { data, error } = await query;
@@ -405,19 +401,42 @@ const BrowseNotes = () => {
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex items-center gap-2 flex-1">
             <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
-            <Select value={levelFilter} onValueChange={setLevelFilter}>
+            <Select value={levelFilter} onValueChange={(val) => {
+              setLevelFilter(val);
+              const newType = getInstitutionType(val);
+              if (institutionType !== newType) setUniversityFilter("all");
+            }}>
               <SelectTrigger className="flex-1">
                 <SelectValue placeholder="Select level first" />
               </SelectTrigger>
               <SelectContent className="bg-background border border-border z-50">
-                {levels.map((level) => (
-                  <SelectItem key={level.value} value={level.value}>
-                    {level.label}
+                <SelectItem value="all">All Levels</SelectItem>
+                {ALL_LEVELS.map((level) => (
+                  <SelectItem key={level} value={level}>
+                    {level}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
+          {institutionType && (
+            <Select value={universityFilter} onValueChange={setUniversityFilter}>
+              <SelectTrigger className="flex-1 sm:w-[200px] truncate">
+                <SelectValue placeholder={institutionType === "school" ? "All Boards" : "All Universities"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border border-border z-50">
+                <SelectItem value="all">
+                  {institutionType === "school" ? "All Boards" : "All Universities"}
+                </SelectItem>
+                {(institutionType === "school" ? BOARDS : UNIVERSITIES).map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {item}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           <Select value={subjectFilter} onValueChange={setSubjectFilter}>
             <SelectTrigger className="flex-1 sm:w-[200px]">
@@ -444,7 +463,7 @@ const BrowseNotes = () => {
           <BookOpen className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
           <h3 className="text-lg font-medium mb-2">No notes found</h3>
           <p className="text-muted-foreground">
-            {searchQuery || subjectFilter !== "All Subjects" || levelFilter !== "all"
+            {searchQuery || subjectFilter !== "All Subjects" || levelFilter !== "all" || universityFilter !== "all"
               ? "Try adjusting your filters"
               : "Be the first to upload notes!"}
           </p>

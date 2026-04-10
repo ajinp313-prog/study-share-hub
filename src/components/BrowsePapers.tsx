@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType } from "@/constants/education";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,21 +47,10 @@ const BrowsePapers = () => {
 
   // Filter states
   const [levelFilter, setLevelFilter] = useState<string>(searchParams.get("level") || "all");
+  const [universityFilter, setUniversityFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("");
 
-  // Predefined study levels
-  const studyLevels = [
-    "10th",
-    "+1",
-    "+2",
-    "Undergraduate",
-    "Graduate",
-    "Masters",
-    "Engineering",
-    "MBBS",
-    "MD",
-    "PhD"
-  ];
+  const institutionType = getInstitutionType(levelFilter);
 
   useEffect(() => {
     fetchPapers(true);
@@ -203,11 +193,12 @@ const BrowsePapers = () => {
 
   const clearFilters = () => {
     setLevelFilter("all");
+    setUniversityFilter("all");
     setYearFilter("");
     setSearchQuery("");
   };
 
-  const hasActiveFilters = levelFilter !== "all" || yearFilter !== "" || searchQuery !== "";
+  const hasActiveFilters = levelFilter !== "all" || universityFilter !== "all" || yearFilter !== "" || searchQuery !== "";
 
   const filteredPapers = useMemo(() => {
     return papers.filter(paper => {
@@ -220,12 +211,15 @@ const BrowsePapers = () => {
       // Level filter
       const matchesLevel = levelFilter === "all" || paper.level === levelFilter;
 
+      // University/Board filter
+      const matchesUniversity = universityFilter === "all" || paper.university === universityFilter;
+
       // Year filter - partial match for typed input
       const matchesYear = yearFilter === "" || String(paper.year).includes(yearFilter);
 
-      return matchesSearch && matchesLevel && matchesYear;
+      return matchesSearch && matchesLevel && matchesUniversity && matchesYear;
     });
-  }, [papers, searchQuery, levelFilter, yearFilter]);
+  }, [papers, searchQuery, levelFilter, universityFilter, yearFilter]);
 
   return (
     <section id="browse" className="py-8">
@@ -252,19 +246,43 @@ const BrowsePapers = () => {
 
           <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-3 w-full sm:w-auto">
             {/* Level Filter */}
-            <Select value={levelFilter} onValueChange={setLevelFilter}>
+            <Select value={levelFilter} onValueChange={(val) => {
+              setLevelFilter(val);
+              // Reset university if institution type changes
+              const newType = getInstitutionType(val);
+              if (institutionType !== newType) setUniversityFilter("all");
+            }}>
               <SelectTrigger className="w-full sm:w-[160px] bg-background text-sm">
                 <SelectValue placeholder="Level" />
               </SelectTrigger>
               <SelectContent className="bg-background border border-border z-50">
                 <SelectItem value="all">All Levels</SelectItem>
-                {studyLevels.map(level => (
+                {ALL_LEVELS.map(level => (
                   <SelectItem key={level} value={level}>
                     {level}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Dynamic Board/University Filter */}
+            {institutionType && (
+              <Select value={universityFilter} onValueChange={setUniversityFilter}>
+                <SelectTrigger className="w-full sm:w-[160px] bg-background text-sm truncate">
+                  <SelectValue placeholder={institutionType === "school" ? "All Boards" : "All Universities"} />
+                </SelectTrigger>
+                <SelectContent className="bg-background border border-border z-50">
+                  <SelectItem value="all">
+                    {institutionType === "school" ? "All Boards" : "All Universities"}
+                  </SelectItem>
+                  {(institutionType === "school" ? BOARDS : UNIVERSITIES).map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             {/* Year Filter - Text Input */}
             <Input

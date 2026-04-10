@@ -232,7 +232,7 @@ const BrowseNotes = () => {
     const to = from + PAGE_SIZE - 1;
 
     let query = supabase
-      .from("notes_public")
+      .from("notes")
       .select("*")
       .order("created_at", { ascending: false })
       .range(from, to);
@@ -252,10 +252,10 @@ const BrowseNotes = () => {
       toast.error("Failed to load notes");
     } else {
       const validNotes: Note[] = (data || [])
-        .filter(note => 
-          note.id !== null && 
-          note.title !== null && 
-          note.subject !== null && 
+        .filter(note =>
+          note.id !== null &&
+          note.title !== null &&
+          note.subject !== null &&
           note.level !== null &&
           note.file_path !== null &&
           note.downloads !== null &&
@@ -367,7 +367,7 @@ const BrowseNotes = () => {
       toast.success("Download started!");
 
       // Update local state for download count
-      setNotes(prev => prev.map(n => 
+      setNotes(prev => prev.map(n =>
         n.id === note.id ? { ...n, downloads: n.downloads + 1 } : n
       ));
     } catch (error) {
@@ -451,103 +451,103 @@ const BrowseNotes = () => {
         </div>
       ) : (
         <>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredNotes.map((note) => (
-            <Card key={note.id} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                    <FileText className="h-5 w-5 text-primary" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredNotes.map((note) => (
+              <Card key={note.id} className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-foreground line-clamp-2">
+                        {note.title}
+                      </h4>
+                      {note.description && (
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          {note.description}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-foreground line-clamp-2">
-                      {note.title}
-                    </h4>
-                    {note.description && (
-                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                        {note.description}
-                      </p>
+
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <Badge variant="secondary">{note.subject}</Badge>
+                    <Badge variant="outline">{note.level}</Badge>
+                    {note.chapter_topic && (
+                      <Badge variant="outline" className="text-xs">
+                        {note.chapter_topic}
+                      </Badge>
                     )}
                   </div>
-                </div>
 
-                <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge variant="secondary">{note.subject}</Badge>
-                  <Badge variant="outline">{note.level}</Badge>
-                  {note.chapter_topic && (
-                    <Badge variant="outline" className="text-xs">
-                      {note.chapter_topic}
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
-                  {note.university && (
-                    <>
-                      <Building2 className="h-3 w-3" />
-                      <span>{note.university}</span>
-                      <span>•</span>
-                    </>
-                  )}
-                  <Download className="h-3 w-3" />
-                  <span>{note.downloads} downloads</span>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleView(note)}
-                    disabled={viewing === note.id}
-                  >
-                    {viewing === note.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+                    {note.university && (
                       <>
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
+                        <Building2 className="h-3 w-3" />
+                        <span>{note.university}</span>
+                        <span>•</span>
                       </>
                     )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleDownload(note)}
-                    disabled={downloading === note.id}
-                  >
-                    {downloading === note.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Download className="h-4 w-4 mr-1" />
-                        Download
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                    <Download className="h-3 w-3" />
+                    <span>{note.downloads} downloads</span>
+                  </div>
 
-        {hasMore && !searchQuery && subjectFilter === "All Subjects" && levelFilter === "all" && (
-          <div className="flex justify-center mt-8">
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => fetchNotes(false)}
-              disabled={loadingMore}
-              className="gap-2"
-            >
-              {loadingMore ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : null}
-              Load More Notes
-            </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleView(note)}
+                      disabled={viewing === note.id}
+                    >
+                      {viewing === note.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleDownload(note)}
+                      disabled={downloading === note.id}
+                    >
+                      {downloading === note.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 mr-1" />
+                          Download
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        )}
-      </>
+
+          {hasMore && !searchQuery && subjectFilter === "All Subjects" && levelFilter === "all" && (
+            <div className="flex justify-center mt-8">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => fetchNotes(false)}
+                disabled={loadingMore}
+                className="gap-2"
+              >
+                {loadingMore ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
+                Load More Notes
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {/* PDF Preview Modal */}

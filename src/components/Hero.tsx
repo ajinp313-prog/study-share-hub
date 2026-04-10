@@ -16,22 +16,22 @@ const Hero = () => {
     const fetchStats = async () => {
       // Count approved papers
       const { count: papersCount } = await supabase
-        .from("papers_public" as any)
+        .from("papers")
         .select("*", { count: "exact", head: true });
 
       // Count approved notes
       const { count: notesCount } = await supabase
-        .from("notes_public")
+        .from("notes")
         .select("*", { count: "exact", head: true });
 
       // Count unique universities from papers
       const { data: paperUnis } = await supabase
-        .from("papers_public" as any)
+        .from("papers")
         .select("university")
         .not("university", "is", null);
 
       const { data: noteUnis } = await supabase
-        .from("notes_public")
+        .from("notes")
         .select("university")
         .not("university", "is", null);
 
@@ -78,7 +78,7 @@ const Hero = () => {
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: "0.2s" }}>
-              Access question papers and study notes from high school to engineering. 
+              Access question papers and study notes from high school to engineering.
               Upload your materials, earn rewards, and help fellow students succeed.
             </p>
 
@@ -123,9 +123,9 @@ const Hero = () => {
         </div>
       </section>
 
-      <AuthModal 
-        open={authModalOpen} 
-        onOpenChange={setAuthModalOpen} 
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
         defaultTab="signup"
       />
     </>

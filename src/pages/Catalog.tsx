@@ -91,12 +91,12 @@ const Catalog = () => {
 
     // Fetch approved papers grouped by subject+level
     const { data: papers } = await supabase
-      .from("papers_public" as any)
+      .from("papers")
       .select("subject, level");
 
     // Fetch approved notes grouped by subject+level
     const { data: notes } = await supabase
-      .from("notes_public")
+      .from("notes")
       .select("subject, level");
 
     const countMap = new Map<string, SubjectCount>();

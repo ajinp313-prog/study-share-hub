@@ -37,13 +37,13 @@ const BrowsePapers = () => {
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [downloading, setDownloading] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
-  
+
   // PDF Preview Modal state
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState("");
   const [previewPaper, setPreviewPaper] = useState<Paper | null>(null);
-  
+
   // Filter states
   const [levelFilter, setLevelFilter] = useState<string>(searchParams.get("level") || "all");
   const [yearFilter, setYearFilter] = useState<string>("");
@@ -78,7 +78,7 @@ const BrowsePapers = () => {
     const to = from + PAGE_SIZE - 1;
 
     const { data, error } = await supabase
-      .from("papers_public" as any)
+      .from("papers")
       .select("id, title, subject, level, university, year, downloads, file_path")
       .eq("status", "approved")
       .order("created_at", { ascending: false })
@@ -144,7 +144,7 @@ const BrowsePapers = () => {
     }
 
     setDownloading(paper.id);
-    
+
     try {
       // Get signed URL for download
       const result = await getSignedUrl({
@@ -188,7 +188,7 @@ const BrowsePapers = () => {
       await downloadSignedFile(result.signedUrl, `${paper.title}.pdf`);
 
       // Update local state
-      setPapers(papers.map(p => 
+      setPapers(papers.map(p =>
         p.id === paper.id ? { ...p, downloads: p.downloads + 1 } : p
       ));
 
@@ -197,7 +197,7 @@ const BrowsePapers = () => {
       console.error("Download error:", error);
       toast.error("Failed to download paper");
     }
-    
+
     setDownloading(null);
   };
 
@@ -216,13 +216,13 @@ const BrowsePapers = () => {
         paper.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         paper.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (paper.university?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-      
+
       // Level filter
       const matchesLevel = levelFilter === "all" || paper.level === levelFilter;
-      
+
       // Year filter - partial match for typed input
       const matchesYear = yearFilter === "" || String(paper.year).includes(yearFilter);
-      
+
       return matchesSearch && matchesLevel && matchesYear;
     });
   }, [papers, searchQuery, levelFilter, yearFilter]);
@@ -278,9 +278,9 @@ const BrowsePapers = () => {
 
           {/* Clear Filters */}
           {hasActiveFilters && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={clearFilters}
               className="gap-1 text-muted-foreground hover:text-foreground w-full sm:w-auto"
             >
@@ -340,9 +340,9 @@ const BrowsePapers = () => {
                         </div>
                       </div>
                       <div className="flex flex-row sm:flex-col gap-2 mt-2 sm:mt-0">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
+                        <Button
+                          size="sm"
+                          variant="outline"
                           className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
                           onClick={() => handleView(paper)}
                           disabled={viewing === paper.id}
@@ -354,8 +354,8 @@ const BrowsePapers = () => {
                           )}
                           View
                         </Button>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
                           onClick={() => handleDownload(paper)}
                           disabled={downloading === paper.id}

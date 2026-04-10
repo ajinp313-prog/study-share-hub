@@ -43,7 +43,7 @@ const schoolSubjects = [
   "Business Studies",
 ];
 
-const FREE_TEXT_LEVELS = ["Engineering", "Graduate", "Masters", "PhD", "MBBS", "MD", "UG", "PG", "Diploma"];
+const FREE_TEXT_LEVELS = ["Engineering", "UG", "PG", "Medical", "Diploma"];
 
 const levels = ALL_LEVELS.map(level => ({ value: level, label: level }));
 

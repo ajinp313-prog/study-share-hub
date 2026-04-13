@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType } from "@/constants/education";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -329,70 +330,77 @@ const BrowsePapers = () => {
         ) : (
           <>
             <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
-              {filteredPapers.map((paper) => (
-                <Card
+              {filteredPapers.map((paper, index) => (
+                <motion.div
                   key={paper.id}
-                  className="hover:shadow-md transition-all border-border group"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.4, delay: (index % 10) * 0.05 }}
                 >
-                  <CardContent className="p-4 sm:p-5">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors text-sm sm:text-base line-clamp-2">
-                          {paper.title}
-                        </h4>
-                        {paper.university && (
-                          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
-                            <Building2 className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                            <span className="truncate">{paper.university}</span>
-                            {paper.year && <span className="flex-shrink-0">• {paper.year}</span>}
+                  <Card
+                    className="hover:shadow-md transition-all border-border group h-full"
+                  >
+                    <CardContent className="p-4 sm:p-5">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors text-sm sm:text-base line-clamp-2">
+                            {paper.title}
+                          </h4>
+                          {paper.university && (
+                            <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
+                              <Building2 className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                              <span className="truncate">{paper.university}</span>
+                              {paper.year && <span className="flex-shrink-0">• {paper.year}</span>}
+                            </div>
+                          )}
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <Badge variant="secondary" className="text-xs">
+                              {paper.subject}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              <GraduationCap className="h-3 w-3 mr-1" />
+                              {paper.level}
+                            </Badge>
                           </div>
-                        )}
-                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {paper.subject}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            <GraduationCap className="h-3 w-3 mr-1" />
-                            {paper.level}
-                          </Badge>
+                        </div>
+                        <div className="flex flex-row sm:flex-col gap-2 mt-2 sm:mt-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
+                            onClick={() => handleView(paper)}
+                            disabled={viewing === paper.id}
+                          >
+                            {viewing === paper.id ? (
+                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                            ) : (
+                              <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                            )}
+                            View
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
+                            onClick={() => handleDownload(paper)}
+                            disabled={downloading === paper.id}
+                          >
+                            {downloading === paper.id ? (
+                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                            ) : (
+                              <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                            )}
+                            Download
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex flex-row sm:flex-col gap-2 mt-2 sm:mt-0">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
-                          onClick={() => handleView(paper)}
-                          disabled={viewing === paper.id}
-                        >
-                          {viewing === paper.id ? (
-                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                          ) : (
-                            <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                          )}
-                          View
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="gap-1 flex-1 sm:flex-none text-xs sm:text-sm h-8 sm:h-9"
-                          onClick={() => handleDownload(paper)}
-                          disabled={downloading === paper.id}
-                        >
-                          {downloading === paper.id ? (
-                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                          ) : (
-                            <Download className="h-3 w-3 sm:h-4 sm:w-4" />
-                          )}
-                          Download
-                        </Button>
+                      <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-border flex items-center text-xs text-muted-foreground">
+                        <Download className="h-3 w-3 mr-1" />
+                        {paper.downloads} downloads
                       </div>
-                    </div>
-                    <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-border flex items-center text-xs text-muted-foreground">
-                      <Download className="h-3 w-3 mr-1" />
-                      {paper.downloads} downloads
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               ))}
             </div>
 

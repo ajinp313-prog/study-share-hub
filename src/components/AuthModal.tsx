@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { lovable } from "@/integrations/lovable/index";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -529,8 +530,13 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
               </TabsList>
 
               {/* Sign In Tab */}
-              <TabsContent value="signin" className="mt-6">
-                <div className="space-y-4">
+              <TabsContent value="signin" className="mt-6 overflow-x-hidden p-1">
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="space-y-4"
+                >
                   {/* Google Sign-In Button */}
                   <Button
                     type="button"
@@ -643,12 +649,17 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                       </button>
                     </p>
                   </form>
-                </div>
+                </motion.div>
               </TabsContent>
 
               {/* Sign Up Tab */}
-              <TabsContent value="signup" className="mt-6">
-                <div className="space-y-4">
+              <TabsContent value="signup" className="mt-6 overflow-x-hidden p-1">
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="space-y-4"
+                >
                   {/* Google Sign-Up Button */}
                   <Button
                     type="button"
@@ -834,7 +845,7 @@ const AuthModal = ({ open, onOpenChange, defaultTab = "signin" }: AuthModalProps
                       </button>
                     </p>
                   </form>
-                </div>
+                </motion.div>
               </TabsContent>
             </Tabs>
           )}

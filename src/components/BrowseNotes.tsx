@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType, getSemestersForLevel } from "@/constants/education";
+import { subjectsByLevel } from "@/constants/subjects";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,46 +44,6 @@ interface Note {
   file_path: string;
 }
 
-// Subjects mapped by academic level
-const subjectsByLevel: Record<string, string[]> = {
-  "10th": [
-    "Mathematics", "Science", "Social Science", "English", "Hindi", "Computer Science", "Other"
-  ],
-  "+1": [
-    "Mathematics", "Physics", "Chemistry", "Biology", "Computer Science",
-    "Accountancy", "Business Studies", "Economics", "English", "History",
-    "Geography", "Political Science", "Other"
-  ],
-  "+2": [
-    "Mathematics", "Physics", "Chemistry", "Biology", "Computer Science",
-    "Accountancy", "Business Studies", "Economics", "English", "History",
-    "Geography", "Political Science", "Other"
-  ],
-  "UG": [
-    "Mathematics", "Physics", "Chemistry", "Biology", "Computer Science",
-    "Economics", "Business Administration", "Commerce", "English Literature",
-    "History", "Psychology", "Sociology", "Political Science", "Law", "Nursing", "Other"
-  ],
-  "PG": [
-    "Mathematics", "Physics", "Chemistry", "Biology", "Computer Science",
-    "Economics", "Business Administration (MBA)", "Commerce", "English Literature",
-    "History", "Psychology", "Sociology", "Political Science", "Law", "Other"
-  ],
-  "Engineering": [
-    "Computer Science Engineering", "Electronics & Communication", "Electrical",
-    "Mechanical", "Civil", "Chemical", "Information Technology",
-    "Biotechnology", "Data Science", "Artificial Intelligence", "Other"
-  ],
-  "Medical": [
-    "Anatomy", "Physiology", "Biochemistry", "Pathology", "Pharmacology",
-    "Microbiology", "Community Medicine", "Internal Medicine", "Surgery",
-    "Pediatrics", "Obstetrics & Gynecology", "Other"
-  ],
-  "Diploma": [
-    "Civil Engineering", "Mechanical Engineering", "Electrical Engineering",
-    "Computer Engineering", "Automobile Engineering", "Pharmacy", "Other"
-  ]
-};
 
 const PAGE_SIZE = 20;
 

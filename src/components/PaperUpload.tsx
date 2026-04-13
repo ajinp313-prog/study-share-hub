@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { REWARDS } from "@/constants/rewards";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,22 +28,8 @@ import { UploadProgress } from "@/components/ui/upload-progress";
 import { PDFFilePreview } from "@/components/PDFFilePreview";
 import { sanitizeFileName, isPdfMagicBytes } from "@/lib/sanitize";
 import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType, getSemestersForLevel } from "@/constants/education";
+import { subjectsByLevel } from "@/constants/subjects";
 import logger from "@/lib/logger";
-
-const schoolSubjects = [
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "Computer Science",
-  "English",
-  "History",
-  "Geography",
-  "Economics",
-  "Business Studies",
-];
-
-const FREE_TEXT_LEVELS = ["Engineering", "UG", "PG", "Medical", "Diploma"];
 
 const levels = ALL_LEVELS.map(level => ({ value: level, label: level }));
 
@@ -66,6 +52,12 @@ export const PaperUpload = () => {
   });
 
   const institutionType = getInstitutionType(formData.level);
+
+  const availableSubjects = useMemo(() => {
+    if (!formData.level) return [];
+    // remove purely string "Other" so we can map it to our custom __other__ hook
+    return (subjectsByLevel[formData.level] || []).filter(s => s !== "Other");
+  }, [formData.level]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -225,7 +217,7 @@ export const PaperUpload = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Subject *</Label>
-              {FREE_TEXT_LEVELS.includes(formData.level) || customSubject ? (
+              {availableSubjects.length === 0 || customSubject ? (
                 <div className="space-y-1">
                   <Input
                     placeholder="Type your subject name"
@@ -235,7 +227,7 @@ export const PaperUpload = () => {
                     }
                     required
                   />
-                  {!FREE_TEXT_LEVELS.includes(formData.level) && (
+                  {availableSubjects.length > 0 && (
                     <button
                       type="button"
                       className="text-xs text-primary hover:underline"
@@ -264,8 +256,8 @@ export const PaperUpload = () => {
                   <SelectTrigger>
                     <SelectValue placeholder="Select subject" />
                   </SelectTrigger>
-                  <SelectContent className="bg-background border border-border z-50">
-                    {schoolSubjects.map((subject) => (
+                  <SelectContent className="bg-background border border-border z-50 max-h-56 overflow-y-auto">
+                    {availableSubjects.map((subject) => (
                       <SelectItem key={subject} value={subject}>
                         {subject}
                       </SelectItem>

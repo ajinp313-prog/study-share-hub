@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
-import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType } from "@/constants/education";
+import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType, getSemestersForLevel } from "@/constants/education";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSignedUrl } from "@/hooks/useSignedUrl";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +37,7 @@ interface Note {
   level: string;
   chapter_topic: string | null;
   university: string | null;
+  semester?: number;
   downloads: number;
   created_at: string;
   file_path: string;
@@ -96,6 +97,7 @@ const BrowseNotes = () => {
   const [subjectFilter, setSubjectFilter] = useState("All Subjects");
   const [levelFilter, setLevelFilter] = useState("all");
   const [universityFilter, setUniversityFilter] = useState("all");
+  const [semesterFilter, setSemesterFilter] = useState("all");
   const [downloading, setDownloading] = useState<string | null>(null);
 
   const institutionType = getInstitutionType(levelFilter);
@@ -128,7 +130,7 @@ const BrowseNotes = () => {
 
   useEffect(() => {
     fetchNotes(true);
-  }, [subjectFilter, levelFilter, universityFilter]);
+  }, [subjectFilter, levelFilter, universityFilter, semesterFilter]);
 
   const fetchNotes = async (reset = false) => {
     if (reset) {
@@ -160,6 +162,10 @@ const BrowseNotes = () => {
       query = query.eq("university", universityFilter);
     }
 
+    if (semesterFilter !== "all") {
+      query = query.eq("semester", parseInt(semesterFilter));
+    }
+
     const { data, error } = await query;
 
     if (error) {
@@ -184,6 +190,7 @@ const BrowseNotes = () => {
           level: note.level as string,
           chapter_topic: note.chapter_topic,
           university: note.university,
+          semester: note.semester as number | undefined,
           downloads: note.downloads as number,
           created_at: note.created_at as string,
           file_path: note.file_path as string,
@@ -324,6 +331,7 @@ const BrowseNotes = () => {
               setLevelFilter(val);
               const newType = getInstitutionType(val);
               if (institutionType !== newType) setUniversityFilter("all");
+              setSemesterFilter("all");
             }}>
               <SelectTrigger className="flex-1">
                 <SelectValue placeholder="Select level first" />
@@ -362,13 +370,30 @@ const BrowseNotes = () => {
               <SelectValue placeholder="Select subject" />
             </SelectTrigger>
             <SelectContent className="bg-background border border-border z-50">
-              {availableSubjects.map((subject) => (
+              <SelectItem value="All Subjects">All Subjects</SelectItem>
+              {availableSubjects.filter(s => s !== "All Subjects").map((subject) => (
                 <SelectItem key={subject} value={subject}>
                   {subject}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+          {getSemestersForLevel(levelFilter) > 0 && (
+            <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+              <SelectTrigger className="flex-1 sm:w-[150px]">
+                <SelectValue placeholder="Semester" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border border-border z-50">
+                <SelectItem value="all">All Semesters</SelectItem>
+                {Array.from({ length: getSemestersForLevel(levelFilter) }, (_, i) => (
+                  <SelectItem key={i + 1} value={String(i + 1)}>
+                    Semester {i + 1}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 

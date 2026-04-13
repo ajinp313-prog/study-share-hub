@@ -31,3 +31,14 @@ export const getInstitutionType = (level: string) => {
     }
     return null;
 };
+
+export const getSemestersForLevel = (level: string): number => {
+    switch (level) {
+        case "Medical": return 10;
+        case "Engineering": return 8;
+        case "UG": return 6;
+        case "Diploma": return 6;
+        case "PG": return 4;
+        default: return 0;
+    }
+};

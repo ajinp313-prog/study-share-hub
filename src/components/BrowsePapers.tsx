@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType } from "@/constants/education";
+import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType, getSemestersForLevel } from "@/constants/education";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,8 +20,9 @@ interface Paper {
   title: string;
   subject: string;
   level: string;
-  university: string | null;
-  year: number | null;
+  university?: string;
+  year?: number;
+  semester?: number;
   downloads: number;
   file_path: string;
 }
@@ -50,6 +51,7 @@ const BrowsePapers = () => {
   const [levelFilter, setLevelFilter] = useState<string>(searchParams.get("level") || "all");
   const [universityFilter, setUniversityFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("");
+  const [semesterFilter, setSemesterFilter] = useState<string>("all");
 
   const institutionType = getInstitutionType(levelFilter);
 
@@ -70,7 +72,7 @@ const BrowsePapers = () => {
 
     const { data, error } = await supabase
       .from("papers")
-      .select("id, title, subject, level, university, year, downloads, file_path")
+      .select("id, title, subject, level, university, year, semester, downloads, file_path")
       .eq("status", "approved")
       .order("created_at", { ascending: false })
       .range(from, to);
@@ -196,10 +198,11 @@ const BrowsePapers = () => {
     setLevelFilter("all");
     setUniversityFilter("all");
     setYearFilter("");
+    setSemesterFilter("all");
     setSearchQuery("");
   };
 
-  const hasActiveFilters = levelFilter !== "all" || universityFilter !== "all" || yearFilter !== "" || searchQuery !== "";
+  const hasActiveFilters = levelFilter !== "all" || universityFilter !== "all" || yearFilter !== "" || semesterFilter !== "all" || searchQuery !== "";
 
   const filteredPapers = useMemo(() => {
     return papers.filter(paper => {
@@ -218,9 +221,12 @@ const BrowsePapers = () => {
       // Year filter - partial match for typed input
       const matchesYear = yearFilter === "" || String(paper.year).includes(yearFilter);
 
-      return matchesSearch && matchesLevel && matchesUniversity && matchesYear;
+      // Semester filter
+      const matchesSemester = semesterFilter === "all" || paper.semester === parseInt(semesterFilter);
+
+      return matchesSearch && matchesLevel && matchesUniversity && matchesYear && matchesSemester;
     });
-  }, [papers, searchQuery, levelFilter, universityFilter, yearFilter]);
+  }, [papers, searchQuery, levelFilter, universityFilter, yearFilter, semesterFilter]);
 
   return (
     <section id="browse" className="py-8">
@@ -249,9 +255,10 @@ const BrowsePapers = () => {
             {/* Level Filter */}
             <Select value={levelFilter} onValueChange={(val) => {
               setLevelFilter(val);
-              // Reset university if institution type changes
+              // Reset university and semester if institution type changes
               const newType = getInstitutionType(val);
               if (institutionType !== newType) setUniversityFilter("all");
+              setSemesterFilter("all");
             }}>
               <SelectTrigger className="w-full sm:w-[160px] bg-background text-sm">
                 <SelectValue placeholder="Level" />
@@ -279,6 +286,23 @@ const BrowsePapers = () => {
                   {(institutionType === "school" ? BOARDS : UNIVERSITIES).map((item) => (
                     <SelectItem key={item} value={item}>
                       {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Dynamic Semester Filter */}
+            {getSemestersForLevel(levelFilter) > 0 && (
+              <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+                <SelectTrigger className="w-full sm:w-[130px] bg-background text-sm">
+                  <SelectValue placeholder="Semester" />
+                </SelectTrigger>
+                <SelectContent className="bg-background border border-border z-50">
+                  <SelectItem value="all">All Semesters</SelectItem>
+                  {Array.from({ length: getSemestersForLevel(levelFilter) }, (_, i) => (
+                    <SelectItem key={i + 1} value={String(i + 1)}>
+                      Semester {i + 1}
                     </SelectItem>
                   ))}
                 </SelectContent>

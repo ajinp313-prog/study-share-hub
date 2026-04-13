@@ -28,7 +28,7 @@ import { UploadProgress } from "@/components/ui/upload-progress";
 import { PDFFilePreview } from "@/components/PDFFilePreview";
 import { sanitizeFileName, isPdfMagicBytes } from "@/lib/sanitize";
 import logger from "@/lib/logger";
-import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType } from "@/constants/education";
+import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType, getSemestersForLevel } from "@/constants/education";
 
 // Subjects mapped by academic level
 const subjectsByLevel: Record<string, string[]> = {
@@ -87,6 +87,7 @@ export const NoteUpload = () => {
     level: "",
     chapter_topic: "",
     university: "",
+    semester: "",
   });
 
   // Get subjects based on selected level
@@ -147,6 +148,7 @@ export const NoteUpload = () => {
         level: formData.level,
         chapter_topic: formData.chapter_topic || null,
         university: formData.university || null,
+        semester: formData.semester ? parseInt(formData.semester) : null,
         file_path: filePath,
         file_size: file.size,
       });
@@ -183,6 +185,7 @@ export const NoteUpload = () => {
       level: "",
       chapter_topic: "",
       university: "",
+      semester: "",
     });
     resetUpload();
   };
@@ -301,7 +304,7 @@ export const NoteUpload = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="chapter_topic">Chapter/Topic</Label>
               <Input
@@ -338,6 +341,30 @@ export const NoteUpload = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            {getSemestersForLevel(formData.level) > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="semester">Semester *</Label>
+                <Select
+                  value={formData.semester}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, semester: value })
+                  }
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select semester" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border border-border z-50 max-h-48 overflow-y-auto">
+                    {Array.from({ length: getSemestersForLevel(formData.level) }, (_, i) => (
+                      <SelectItem key={i + 1} value={String(i + 1)}>
+                        Semester {i + 1}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <UploadProgress progress={progress} isVisible={uploading} />

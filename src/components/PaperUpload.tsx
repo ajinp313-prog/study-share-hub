@@ -27,8 +27,8 @@ import { useFileUpload } from "@/hooks/useFileUpload";
 import { UploadProgress } from "@/components/ui/upload-progress";
 import { PDFFilePreview } from "@/components/PDFFilePreview";
 import { sanitizeFileName, isPdfMagicBytes } from "@/lib/sanitize";
+import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType, getSemestersForLevel } from "@/constants/education";
 import logger from "@/lib/logger";
-import { ALL_LEVELS, BOARDS, UNIVERSITIES, getInstitutionType } from "@/constants/education";
 
 const schoolSubjects = [
   "Mathematics",
@@ -62,6 +62,7 @@ export const PaperUpload = () => {
     level: "",
     university: "",
     year: "",
+    semester: "",
   });
 
   const institutionType = getInstitutionType(formData.level);
@@ -109,6 +110,7 @@ export const PaperUpload = () => {
         level: formData.level,
         university: formData.university || null,
         year: formData.year ? parseInt(formData.year) : null,
+        semester: formData.semester ? parseInt(formData.semester) : null,
         file_path: filePath,
         file_size: file.size,
       });
@@ -146,6 +148,7 @@ export const PaperUpload = () => {
       level: "",
       university: "",
       year: "",
+      semester: "",
     });
     resetUpload();
   };
@@ -302,7 +305,7 @@ export const PaperUpload = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="university">
                 {institutionType === "school" ? "Education Board" : "University"} *
@@ -342,6 +345,30 @@ export const PaperUpload = () => {
                 }
               />
             </div>
+
+            {getSemestersForLevel(formData.level) > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="semester">Semester *</Label>
+                <Select
+                  value={formData.semester}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, semester: value })
+                  }
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select semester" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border border-border z-50 max-h-48 overflow-y-auto">
+                    {Array.from({ length: getSemestersForLevel(formData.level) }, (_, i) => (
+                      <SelectItem key={i + 1} value={String(i + 1)}>
+                        Semester {i + 1}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <UploadProgress progress={progress} isVisible={uploading} />

@@ -47,14 +47,14 @@ const Papers = () => {
             <TabsList>
               <TabsTrigger value="browse" className="flex items-center gap-2">
                 <Search className="h-4 w-4" />
-                Browse Papers
+                Browse Questions
               </TabsTrigger>
               <TabsTrigger value="uploads" className="flex items-center gap-2">
                 <Upload className="h-4 w-4" />
                 My Uploads
               </TabsTrigger>
             </TabsList>
-            
+
             <PaperUpload />
           </div>
 

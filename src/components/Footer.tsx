@@ -24,7 +24,7 @@ const Footer = () => {
             <h4 className="font-semibold mb-4">Platform</h4>
             <ul className="space-y-2 text-sm opacity-70">
               <li><Link to="/catalog" className="hover:opacity-100 transition-opacity">Course Catalog</Link></li>
-              <li><Link to="/papers" className="hover:opacity-100 transition-opacity">Browse Papers</Link></li>
+              <li><Link to="/papers" className="hover:opacity-100 transition-opacity">Browse Questions</Link></li>
               <li><Link to="/notes" className="hover:opacity-100 transition-opacity">Browse Notes</Link></li>
               <li><Link to="/rewards" className="hover:opacity-100 transition-opacity">Rewards Program</Link></li>
             </ul>

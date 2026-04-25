@@ -79,7 +79,7 @@ const Header = () => {
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              Browse Papers
+              Browse Questions
             </button>
             <button
               type="button"
@@ -193,7 +193,7 @@ const Header = () => {
                 }}
                 className="text-left text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
               >
-                Browse Papers
+                Browse Questions
               </button>
               <button
                 type="button"
@@ -238,9 +238,9 @@ const Header = () => {
         )}
       </header>
 
-      <AuthModal 
-        open={authModalOpen} 
-        onOpenChange={setAuthModalOpen} 
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
         defaultTab={authModalTab}
       />
     </>

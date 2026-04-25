@@ -142,7 +142,7 @@ const Hero = () => {
                   }
                 }}
               >
-                Browse Papers
+                Browse Questions
               </Button>
             </motion.div>
 

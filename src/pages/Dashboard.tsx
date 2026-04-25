@@ -194,7 +194,7 @@ const Dashboard = () => {
                   <BookOpen className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Browse Papers</CardTitle>
+                  <CardTitle className="text-lg">Browse Questions</CardTitle>
                   <CardDescription>Find question papers by subject</CardDescription>
                 </div>
               </div>
